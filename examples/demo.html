@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><title>Demo bridge</title>
+<style>body{font-family:system-ui,sans-serif;margin:16px;background:#f6f7f9;color:#222}button{margin:3px;padding:6px 10px}pre{background:#fff;border:1px solid #ddd;padding:8px;height:220px;overflow:auto;font-size:12px}</style>
+</head><body>
+<h3>Demo bridge Ponte – <span id="who">?</span></h3>
+<div>
+  <button id="info">system.info</button>
+  <button id="emit">emit → tutte le app</button>
+  <button id="call">call altra app: somma</button>
+  <button id="exec">shell.exec</button>
+  <button id="clip">clipboard.read</button>
+  <button id="serial">serial.list</button>
+</div>
+<pre id="log"></pre>
+<script>
+const log = (...a) => { const el = document.getElementById('log'); el.textContent = a.map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' ') + '\n' + el.textContent; };
+window.addEventListener('ponte:ready', () => {
+  const p = window.ponte;
+  document.getElementById('who').textContent = p.appId + ' (pannello ' + p.paneId + ')';
+  const other = p.appId === 'ordo' ? 'metodo' : 'ordo';
+  p.on('*', (data, meta) => log('evento', meta.event, 'da', meta.source, data));
+  p.handle('somma', ({a, b}, ctx) => { log('chiamata somma da', ctx.from); return a + b; });
+  const run = (f) => f().then(r => log('ok', r)).catch(e => log('errore', e.message));
+  info.onclick = () => run(() => p.info());
+  emit.onclick = () => { p.emit('saluto', {da: p.appId, ora: new Date().toISOString()}, '*'); log('emesso'); };
+  call.onclick = () => run(() => p.call(other, 'somma', {a: 2, b: 40}));
+  exec.onclick = () => run(() => p.exec(navigator.platform.startsWith('Win') ? 'cmd' : 'uname', navigator.platform.startsWith('Win') ? ['/c','ver'] : ['-a']));
+  clip.onclick = () => run(() => p.invoke('clipboard.read'));
+  serial.onclick = () => run(() => p.invoke('serial.list'));
+  log('bridge pronto', p.version);
+});
+</script></body></html>
