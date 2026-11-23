@@ -242,8 +242,8 @@ impl Default for Config {
         Config {
             apps: vec![
                 AppDef {
-                    id: "ordo".into(),
-                    name: "Ordo".into(),
+                    id: "crm".into(),
+                    name: "CRM".into(),
                     url: "http://localhost:3000".into(),
                     icon: Some("📦".into()),
                     external_links_in_browser: true,
@@ -251,8 +251,8 @@ impl Default for Config {
                     ..Default::default()
                 },
                 AppDef {
-                    id: "metodo".into(),
-                    name: "Metodo".into(),
+                    id: "erp".into(),
+                    name: "ERP".into(),
                     url: "http://localhost:8080".into(),
                     icon: Some("📐".into()),
                     external_links_in_browser: true,

@@ -58,7 +58,7 @@ class CallContext:
         self.client = client
         self.id = call_id
         self.method = method
-        #: The ``from`` field of the call: an app id (``"ordo"``) or ``"external:<name>"``.
+        #: The ``from`` field of the call: an app id (``"crm"``) or ``"external:<name>"``.
         self.caller = caller
 
     async def emit_to_caller(self, event: str, data: Any = None) -> None:

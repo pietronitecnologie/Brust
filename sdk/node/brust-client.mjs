@@ -32,7 +32,7 @@ export class CallContext {
     this.client = client;
     this.id = id;
     this.method = method;
-    /** The `from` field: an app id ("ordo") or "external:<name>". */
+    /** The `from` field: an app id ("crm") or "external:<name>". */
     this.caller = caller;
   }
   /** Sends an event to the app (or program) that made the call. */
@@ -154,7 +154,7 @@ export class BrustClient {
     return this._request({ type: "list" }, timeoutMs);
   }
 
-  /** Opens an app (optionally at a url) or a web address: `open({app})`, `open({url})`, or `open("metodo")`. */
+  /** Opens an app (optionally at a url) or a web address: `open({app})`, `open({url})`, or `open("erp")`. */
   open(arg, { timeoutMs = 10000 } = {}) {
     const o = typeof arg === "string" ? { app: arg } : arg || {};
     if (!o.app && !o.url) return Promise.reject(new Error("specify app or url"));

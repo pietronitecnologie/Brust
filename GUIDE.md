@@ -8,14 +8,14 @@ between the browser and the PC. For the full list of commands see `README.md`.
 ```
  ┌──────────────┐   window.brust    ┌──────────────┐   WebSocket 127.0.0.1   ┌──────────────────┐
  │   Web app    │ ◄───────────────► │    Brust     │ ◄─────────────────────► │  Local software  │
- │ (Ordo, …)    │    (injected)     │   (client)   │  token + client name    │ (tester, driver) │
+ │ (CRM, …)    │    (injected)     │   (client)   │  token + client name    │ (tester, driver) │
  └──────────────┘                   └──────────────┘                         └──────────────────┘
-        app id: "ordo"                                                         name: "tester"
+        app id: "crm"                                                         name: "tester"
 ```
 
 Every participant has a **name**:
 
-* web apps have the `id` defined in `config.json` (e.g. `ordo`);
+* web apps have the `id` defined in `config.json` (e.g. `crm`);
 * local programs have the name they connect with (`?name=tester`).
 
 Brust routes messages based on that name. There are three message types:
@@ -33,12 +33,12 @@ If no app has that `id`, it goes to the local program connected with that name. 
 ## 2. Full example: starting a test
 
 ```
-Web app (ordo)                     Brust                          Local software (tester)
+Web app (crm)                     Brust                          Local software (tester)
      │ brust.call("tester","startTest",{code})                              │
      │──────────────────────────────►│ {"type":"call","id":7,"method":"startTest",
-     │                               │  "params":{…},"from":"ordo"} ───────►│
+     │                               │  "params":{…},"from":"crm"} ───────►│
      │                               │                                      │ runs the test
-     │                               │◄── {"type":"emit","target":"ordo",   │
+     │                               │◄── {"type":"emit","target":"crm",   │
      │◄── brust.on("test.progress")  │     "event":"test.progress",…}       │ (0..n times)
      │                               │                                      │
      │                               │◄── {"type":"reply","id":7,"ok":true, │
@@ -77,7 +77,7 @@ the hardware. Alternatively, the web app transforms the data before calling.
 
 If instead the local software needs to start something in the web app, the flow is mirrored:
 the web app registers `brust.handle("openOrder", fn)` and the software sends
-`{"type":"call","id":1,"target":"ordo","method":"openOrder","params":{…}}`, receiving
+`{"type":"call","id":1,"target":"crm","method":"openOrder","params":{…}}`, receiving
 `{"type":"result","id":1,…}`.
 
 ## 3. Structuring the web app
@@ -151,7 +151,7 @@ export async function startTest(code, onProgress) {
 | Run a command-line program and read its output | `brust.exec(...)` (`exec` permission). Have the program print JSON to stdout. |
 | Talk to a simple serial instrument | `serial.open/write` + `serial.data` event |
 | Long-running, stateful operations, complex hardware, proprietary SDKs | **local software** connected to the bridge (`call` + events) |
-| Two web apps working together (Ordo ↔ Metodo) | `brust.handle` in one, `brust.call` in the other |
+| Two web apps working together (CRM ↔ ERP) | `brust.handle` in one, `brust.call` in the other |
 | Notify several recipients | `brust.emit(event, data, "*")` |
 | Read/write exchange files with other programs | `fs.*` (`fs` permission + `fs_roots`) |
 | Keep a log or a note the operator can read and edit | `notes.append` (`notes` permission) |
@@ -169,12 +169,12 @@ const text = await brust.invoke("notes.read", { notebook: "Test log" });
 // Counter on the pane header/tab and in the window title; 0 removes it.
 await brust.invoke("ui.badge", { count: pendingOrders.length });
 // Toast in Brust; native desktop notification if the window is not focused or native: true.
-await brust.invoke("ui.notify", { title: "Ordo", message: "New order 12", native: true });
+await brust.invoke("ui.notify", { title: "CRM", message: "New order 12", native: true });
 
 // Printing ("print" permission)
 const printers = await brust.invoke("print.list");            // [{name, default}]
 await brust.invoke("print.page", { printer: "Office", silent: true });
-await brust.invoke("print.file", { path: "C:\\Exchange\\Ordo\\label.pdf", printer: "Zebra" });
+await brust.invoke("print.file", { path: "C:\\Exchange\\CRM\\label.pdf", printer: "Zebra" });
 ```
 
 * Notebook names are file names (`<name>.md` in the notes folder): avoid `/ \ : * ? " < > |`, a leading
@@ -240,21 +240,21 @@ Connection: `ws://127.0.0.1:47800/?token=TOKEN&name=NAME`
 | Received by the software | Meaning |
 |---|---|
 | `{"type":"welcome","client":3,"version":"0.1.0","apps":[…]}` | connection accepted |
-| `{"type":"call","id":7,"method":"…","params":{…},"from":"ordo"}` | an app is asking for something: answer with `reply` |
-| `{"type":"event","event":"…","data":{…},"source":"ordo"}` | event emitted by an app to external software or `"*"` |
+| `{"type":"call","id":7,"method":"…","params":{…},"from":"crm"}` | an app is asking for something: answer with `reply` |
+| `{"type":"event","event":"…","data":{…},"source":"crm"}` | event emitted by an app to external software or `"*"` |
 | `{"type":"result","id":…,"ok":…,"result"/"error":…}` | reply to one of your `call`, `list`, `emit`, `open`, … |
 | `{"type":"pong","id":…}` | reply to `ping` |
 
 | Sent by the software | Meaning |
 |---|---|
 | `{"type":"reply","id":7,"ok":true,"result":{…}}` | reply to a received `call` (`ok:false,"error":"…"` for errors) |
-| `{"type":"emit","target":"ordo","event":"…","data":{…}}` | event to an app (`"*"` = all) |
-| `{"type":"call","id":1,"target":"ordo","method":"…","params":{…}}` | calls a method an app registered with `brust.handle` |
-| `{"type":"open","app":"metodo"}`, `{"type":"focus","app":"ordo"}` | opens an app or brings it to the front |
+| `{"type":"emit","target":"crm","event":"…","data":{…}}` | event to an app (`"*"` = all) |
+| `{"type":"call","id":1,"target":"crm","method":"…","params":{…}}` | calls a method an app registered with `brust.handle` |
+| `{"type":"open","app":"erp"}`, `{"type":"focus","app":"crm"}` | opens an app or brings it to the front |
 | `{"type":"list","id":2}` | tabs, panes and configured apps |
 | `{"type":"open_template","id":3,"name":"Testing"}` | opens a template in a new tab |
 | `{"type":"notes_append","id":4,"notebook":"Test log","text":"…"}` | appends to a notebook (default `Inbox`); recorded in the activity log |
-| `{"type":"cli","id":5,"args":["--open","ordo"]}` | same as the command line (`--open`, `--url`, `--template`, `--notes`, `brust://…`) and brings Brust to the front |
+| `{"type":"cli","id":5,"args":["--open","crm"]}` | same as the command line (`--open`, `--url`, `--template`, `--notes`, `brust://…`) and brings Brust to the front |
 | `{"type":"reload"}`, `{"type":"ping","id":6}` | reloads the active tab; connection check |
 
 `notes_append` is useful for a readable trace of what the software did (e.g. one line per test),
@@ -306,8 +306,8 @@ A working PowerShell client-side example is in `examples/external_client.ps1`.
 
 ### 5.1 Links and command line
 
-Other programs can open Brust where it is needed: `brust --open ordo --url https://…/orders/12`,
-`brust --template "Line 1"`, or a link `brust://open?app=ordo&url=https%3A%2F%2F…` (URL-encode the
+Other programs can open Brust where it is needed: `brust --open crm --url https://…/orders/12`,
+`brust --template "Line 1"`, or a link `brust://open?app=crm&url=https%3A%2F%2F…` (URL-encode the
 values; `brust://` is registered for the current user on Windows when `register_protocol` is `true`).
 If Brust is already running, the request is forwarded to it (via the WebSocket bridge, which must be
 enabled) instead of starting a second instance. Local software that is already connected can send
@@ -322,7 +322,7 @@ enabled) instead of starting a second instance. Local software that is already c
    ```json
    {
      "apps": [
-       { "id": "ordo", "name": "Ordo", "url": "https://ordo.mydomain.com", "permissions": ["messaging", "notes", "print"] }
+       { "id": "crm", "name": "CRM", "url": "https://crm.mydomain.com", "permissions": ["messaging", "notes", "print"] }
      ],
      "privacy": { "block_trackers": true, "confirm_sensitive": true, "audit_log": true, "lock_after_minutes": 15 },
      "default_printer": "Office"

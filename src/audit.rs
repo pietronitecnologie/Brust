@@ -147,8 +147,8 @@ mod tests {
         let a = Audit::new(dir.join("audit.log"), true);
         let args = json!({"program": "git", "args": ["status", "-s"]});
         assert_eq!(summarize("shell.exec", &args), "git status -s");
-        a.record("ordo", "shell.exec", &summarize("shell.exec", &args), "allowed", Some(&Ok(Value::Null)));
-        a.record("ordo", "fs.read", "C:/x", "denied", None);
+        a.record("crm", "shell.exec", &summarize("shell.exec", &args), "allowed", Some(&Ok(Value::Null)));
+        a.record("crm", "fs.read", "C:/x", "denied", None);
         let t = a.tail(10);
         assert_eq!(t.len(), 2);
         assert_eq!(t[0]["cmd"], "fs.read");
@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn grant_keys() {
-        assert_eq!(Grants::key("ordo", "shell.exec", &json!({"program": "C:\\x\\Git.EXE"})), "ordo|shell.exec|git.exe");
+        assert_eq!(Grants::key("crm", "shell.exec", &json!({"program": "C:\\x\\Git.EXE"})), "crm|shell.exec|git.exe");
         assert!(is_sensitive("fs.write") && !is_sensitive("fs.read"));
     }
 }

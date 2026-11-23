@@ -54,7 +54,7 @@ if (await brust.ready()) {                       // false after 1.5 s in a norma
 
   // New client commands
   await brust.notes.append("Order 12 shipped", "Shipping");   // invoke("notes.append", {text, notebook})
-  await brust.ui.notify("Printing completed", "Ordo");         // invoke("ui.notify", {message, title})
+  await brust.ui.notify("Printing completed", "CRM");         // invoke("ui.notify", {message, title})
   await brust.ui.badge(3);                                      // invoke("ui.badge", {count})
   const printers = await brust.print.printers();                // invoke("print.list")
   await brust.print.page({ printer: printers[0]?.name });       // invoke("print.page", opts)
@@ -100,8 +100,8 @@ def order_saved(data, meta):                 # meta = {"event": ..., "source": .
 @client.on_connect
 async def connected(welcome):                # after every (re)connection
     print(await client.list())               # tabs, panes, apps
-    total = await client.call("ordo", "sum", {"a": 2, "b": 40}, timeout=10)
-    await client.emit("scale.weight", {"kg": 1.5}, target="ordo")
+    total = await client.call("crm", "sum", {"a": 2, "b": 40}, timeout=10)
+    await client.emit("scale.weight", {"kg": 1.5}, target="crm")
 
 client.run()                                 # blocking; or: await client.serve()
 ```
@@ -139,10 +139,10 @@ client.method("startTest", async (params, ctx) => {
 client.on("order.saved", (data, meta) => console.log(meta.source, data));   // returns unsubscribe
 client.onConnect(async () => {
   console.log(await client.list());
-  await client.call("ordo", "sum", { a: 2, b: 40 }, { timeoutMs: 10000 });
-  await client.emit("scale.weight", { kg: 1.5 }, "ordo");
-  await client.open({ app: "metodo" });
-  await client.focus("ordo");
+  await client.call("crm", "sum", { a: 2, b: 40 }, { timeoutMs: 10000 });
+  await client.emit("scale.weight", { kg: 1.5 }, "crm");
+  await client.open({ app: "erp" });
+  await client.focus("crm");
 });
 client.start();            // reconnects automatically; await client.stop() to quit
 ```
@@ -175,8 +175,8 @@ client.RegisterMethod("startTest", async (p, ctx) =>
 using var sub = client.On("order.saved", (data, source) => Console.WriteLine($"{source}: {data}"));
 client.Connected += async welcome =>
 {
-    var sum = await client.CallAsync("ordo", "sum", new { a = 2, b = 40 }, TimeSpan.FromSeconds(10));
-    await client.EmitAsync("scale.weight", new { kg = 1.5 }, "ordo");
+    var sum = await client.CallAsync("crm", "sum", new { a = 2, b = 40 }, TimeSpan.FromSeconds(10));
+    await client.EmitAsync("scale.weight", new { kg = 1.5 }, "crm");
 };
 
 await client.RunAsync(cancellationToken);      // reconnect loop with backoff

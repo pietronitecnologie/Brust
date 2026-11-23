@@ -54,7 +54,7 @@ namespace Brust.Client
 
         public string Method { get; }
 
-        /// <summary>The "from" field of the call: an app id ("ordo") or "external:&lt;name&gt;".</summary>
+        /// <summary>The "from" field of the call: an app id ("crm") or "external:&lt;name&gt;".</summary>
         public string Caller { get; }
 
         /// <summary>Cancelled when the client is stopped.</summary>

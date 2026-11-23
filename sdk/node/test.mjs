@@ -111,7 +111,7 @@ class FakeBrust {
       conn.onclose = () => { if (this.conn === conn) this.conn = null; };
       const rest = Buffer.from(head.slice(end + 4), "latin1");
       if (rest.length) conn._data(rest);
-      conn.send({ type: "welcome", client: this.connections, version: "test", apps: ["ordo"] });
+      conn.send({ type: "welcome", client: this.connections, version: "test", apps: ["crm"] });
     };
     socket.on("data", onData);
     socket.on("error", () => {});
@@ -125,7 +125,7 @@ class FakeBrust {
       const fn = this.callHandlers[m.method];
       conn.send(fn ? { type: "result", id, ok: true, result: fn(m.params) } : { type: "result", id, ok: false, error: `'${m.target}' is not open` });
     } else if (m.type === "list") {
-      conn.send({ type: "result", id, ok: true, result: { tabs: [], apps: [{ id: "ordo" }] } });
+      conn.send({ type: "result", id, ok: true, result: { tabs: [], apps: [{ id: "crm" }] } });
     } else if (m.type === "emit" || m.type === "open") {
       conn.send({ type: "result", id, ok: true, result: null });
     } else if (m.type === "focus") {
@@ -176,16 +176,16 @@ async function withClient(fn) {
 test("method call gets one reply, with progress events to the caller", () => withClient(async (fake, client) => {
   assert.equal(fake.name, "tester");
   client.method("startTest", async (params, ctx) => {
-    assert.equal(ctx.caller, "ordo");
+    assert.equal(ctx.caller, "crm");
     for (let i = 0; i < params.repetitions; i++) await ctx.emitToCaller("test.progress", { code: params.code, step: i + 1 });
     return { outcome: "OK", measurements: Array(params.repetitions).fill(1.5) };
   });
-  fake.send({ type: "call", id: 7, method: "startTest", params: { code: "PZ-001", repetitions: 2 }, from: "ordo" });
+  fake.send({ type: "call", id: 7, method: "startTest", params: { code: "PZ-001", repetitions: 2 }, from: "crm" });
   const reply = await fake.next("reply");
   assert.deepEqual(reply, { type: "reply", id: 7, ok: true, result: { outcome: "OK", measurements: [1.5, 1.5] } });
   const e1 = await fake.next("emit");
   const e2 = await fake.next("emit");
-  assert.equal(e1.target, "ordo");
+  assert.equal(e1.target, "crm");
   assert.equal(e1.event, "test.progress");
   assert.equal(e2.data.step, 2);
   await sleep(50);
@@ -195,13 +195,13 @@ test("method call gets one reply, with progress events to the caller", () => wit
 test("handler errors and unknown methods reply ok:false", () => withClient(async (fake, client) => {
   client.method("fail", () => { throw new Error("instrument busy"); });
   client.method("bad", async () => ({ n: 10n })); // BigInt is not JSON
-  fake.send({ type: "call", id: 1, method: "fail", params: {}, from: "ordo" });
+  fake.send({ type: "call", id: 1, method: "fail", params: {}, from: "crm" });
   assert.deepEqual(await fake.next("reply"), { type: "reply", id: 1, ok: false, error: "instrument busy" });
-  fake.send({ type: "call", id: 2, method: "nope", from: "ordo" });
+  fake.send({ type: "call", id: 2, method: "nope", from: "crm" });
   const r2 = await fake.next("reply");
   assert.equal(r2.ok, false);
   assert.match(r2.error, /unknown method: nope/);
-  fake.send({ type: "call", id: 3, method: "bad", from: "ordo" });
+  fake.send({ type: "call", id: 3, method: "bad", from: "crm" });
   const r3 = await fake.next("reply");
   assert.equal(r3.id, 3);
   assert.equal(r3.ok, false);
@@ -212,8 +212,8 @@ test("long handlers do not block other calls", () => withClient(async (fake, cli
   const gate = new Promise((r) => (release = r));
   client.method("slow", async () => { await gate; return "slow"; });
   client.method("fast", () => "fast");
-  fake.send({ type: "call", id: 10, method: "slow", from: "ordo" });
-  fake.send({ type: "call", id: 11, method: "fast", from: "ordo" });
+  fake.send({ type: "call", id: 10, method: "slow", from: "crm" });
+  fake.send({ type: "call", id: 11, method: "fast", from: "crm" });
   assert.deepEqual((await fake.next("reply")).result, "fast");
   release();
   const r = await fake.next("reply");
@@ -223,21 +223,21 @@ test("long handlers do not block other calls", () => withClient(async (fake, cli
 
 test("client.call / list / open / focus", () => withClient(async (fake, client) => {
   fake.callHandlers.sum = (p) => p.a + p.b;
-  assert.equal(await client.call("ordo", "sum", { a: 2, b: 40 }), 42);
+  assert.equal(await client.call("crm", "sum", { a: 2, b: 40 }), 42);
   const c1 = await fake.next("call");
-  assert.equal(c1.target, "ordo");
-  await assert.rejects(client.call("metodo", "missing", {}), (e) => e instanceof BrustError && /is not open/.test(e.message));
+  assert.equal(c1.target, "crm");
+  await assert.rejects(client.call("erp", "missing", {}), (e) => e instanceof BrustError && /is not open/.test(e.message));
   const c2 = await fake.next("call");
   assert.ok(c2.id > c1.id, "incrementing ids");
-  assert.deepEqual((await client.list()).apps, [{ id: "ordo" }]);
-  assert.equal(await client.open({ app: "metodo" }), null);
-  assert.equal((await fake.next("open")).app, "metodo");
-  await assert.rejects(client.focus("metodo"), BrustError);
+  assert.deepEqual((await client.list()).apps, [{ id: "crm" }]);
+  assert.equal(await client.open({ app: "erp" }), null);
+  assert.equal((await fake.next("open")).app, "erp");
+  await assert.rejects(client.focus("erp"), BrustError);
 }));
 
 test("call timeout", () => withClient(async (fake, client) => {
   fake.autoAnswer = false;
-  await assert.rejects(client.call("ordo", "never", {}, { timeoutMs: 150 }), TimeoutError);
+  await assert.rejects(client.call("crm", "never", {}, { timeoutMs: 150 }), TimeoutError);
   assert.equal(client._pending.size, 0);
 }));
 
@@ -248,17 +248,17 @@ test("emit and incoming events", () => withClient(async (fake, client) => {
   await client.emit("scale.weight", { kg: 1.5 });
   const m = await fake.next("emit");
   assert.deepEqual([m.event, m.target, m.data], ["scale.weight", "*", { kg: 1.5 }]);
-  await client.emit("x", null, "ordo", { wait: true });
-  assert.equal((await fake.next("emit")).target, "ordo");
-  fake.send({ type: "event", event: "order.saved", data: { number: 12 }, source: "ordo" });
+  await client.emit("x", null, "crm", { wait: true });
+  assert.equal((await fake.next("emit")).target, "crm");
+  fake.send({ type: "event", event: "order.saved", data: { number: 12 }, source: "crm" });
   await until(() => got.length === 2);
   assert.deepEqual(got.map((g) => g[0]).sort(), ["*", "saved"]);
   for (const [, data, meta] of got) {
     assert.deepEqual(data, { number: 12 });
-    assert.deepEqual(meta, { event: "order.saved", source: "ordo" });
+    assert.deepEqual(meta, { event: "order.saved", source: "crm" });
   }
   off();
-  fake.send({ type: "event", event: "other", data: 1, source: "ordo" });
+  fake.send({ type: "event", event: "other", data: 1, source: "crm" });
   await sleep(100);
   assert.equal(got.length, 2);
 }));
@@ -267,7 +267,7 @@ test("reconnects after a disconnect; pending calls fail immediately", () => with
   const welcomes = [];
   client.onConnect((w) => welcomes.push(w.client));
   fake.autoAnswer = false;
-  const pending = client.call("ordo", "never", {}, { timeoutMs: 5000 });
+  const pending = client.call("crm", "never", {}, { timeoutMs: 5000 });
   await fake.next("call");
   fake.conn.close();
   await assert.rejects(pending, /connection to Brust lost/);
@@ -276,7 +276,7 @@ test("reconnects after a disconnect; pending calls fail immediately", () => with
   assert.deepEqual(welcomes, [2]);
   fake.autoAnswer = true;
   client.method("ping", () => "pong");
-  fake.send({ type: "call", id: 99, method: "ping", from: "ordo" });
+  fake.send({ type: "call", id: 99, method: "ping", from: "crm" });
   assert.equal((await fake.next("reply")).result, "pong");
 }));
 

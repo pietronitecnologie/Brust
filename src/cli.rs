@@ -1,12 +1,12 @@
 //! Command line, `brust://` links, single instance and link-scheme registration.
 //!
 //! ```text
-//! brust --open ordo                 open an app in a new tab
-//! brust --open ordo --url <url>     open a page of the app
+//! brust --open crm                 open an app in a new tab
+//! brust --open crm --url <url>     open a page of the app
 //! brust --url https://example.com   open a web page
 //! brust --template "Testing"        open a saved tileset
 //! brust --notes [notebook]          open the notes
-//! brust brust://open?app=ordo       same, as a link (also: brust://url?u=…, brust://template?name=…, brust://notes?notebook=…)
+//! brust brust://open?app=crm       same, as a link (also: brust://url?u=…, brust://template?name=…, brust://notes?notebook=…)
 //! ```
 
 use std::io::ErrorKind;
@@ -193,10 +193,10 @@ mod tests {
 
     #[test]
     fn args() {
-        assert_eq!(parse(&v(&["--open", "ordo"])), vec![Launch::App { app: "ordo".into(), url: None }]);
+        assert_eq!(parse(&v(&["--open", "crm"])), vec![Launch::App { app: "crm".into(), url: None }]);
         assert_eq!(
-            parse(&v(&["--open", "ordo", "--url", "http://x/y"])),
-            vec![Launch::App { app: "ordo".into(), url: Some("http://x/y".into()) }]
+            parse(&v(&["--open", "crm", "--url", "http://x/y"])),
+            vec![Launch::App { app: "crm".into(), url: Some("http://x/y".into()) }]
         );
         assert_eq!(parse(&v(&["--notes"])), vec![Launch::Notes(None)]);
         assert_eq!(parse(&v(&["--template", "Testing", "--url", "https://a.b"])), vec![
@@ -208,10 +208,10 @@ mod tests {
 
     #[test]
     fn links() {
-        assert_eq!(parse_link("brust://open?app=ordo"), Some(Launch::App { app: "ordo".into(), url: None }));
+        assert_eq!(parse_link("brust://open?app=crm"), Some(Launch::App { app: "crm".into(), url: None }));
         assert_eq!(
-            parse_link("brust://open/?app=ordo&url=http%3A%2F%2Fh%2Fp%3Fq%3D1"),
-            Some(Launch::App { app: "ordo".into(), url: Some("http://h/p?q=1".into()) })
+            parse_link("brust://open/?app=crm&url=http%3A%2F%2Fh%2Fp%3Fq%3D1"),
+            Some(Launch::App { app: "crm".into(), url: Some("http://h/p?q=1".into()) })
         );
         assert_eq!(parse_link("brust://template?name=Line+1"), Some(Launch::Template("Line 1".into())));
         assert_eq!(parse_link("brust://url?u=javascript:alert(1)"), None);

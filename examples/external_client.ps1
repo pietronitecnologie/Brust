@@ -29,8 +29,8 @@ Receive | Out-Host                                  # welcome message
 Send @{ type = "emit"; target = "*"; event = "order.created"; data = @{ number = 123 } }
 Receive | Out-Host
 
-# 2) Call to a method registered by Ordo with brust.handle("sum", ...)
-Send @{ type = "call"; id = 1; target = "ordo"; method = "sum"; params = @{ a = 20; b = 22 } }
+# 2) Call to a method registered by CRM with brust.handle("sum", ...)
+Send @{ type = "call"; id = 1; target = "crm"; method = "sum"; params = @{ a = 20; b = 22 } }
 do { $m = Receive } while ($m.type -ne "result" -or $m.id -ne 1)
 "Result: $($m.result)"
 

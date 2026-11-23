@@ -1,6 +1,6 @@
 # Brust
 
-A Rust desktop client dedicated to web applications (Ordo, Metodo, …). It is a "closed" browser,
+A Rust desktop client for any web application (ERP, CRM, MES, dashboards, intranet tools, …). It is a "closed" browser,
 with no Back/Forward, that acts as a **bridge** between the web applications, the local PC (processes,
 files, clipboard, serial ports, printers) and other installed software.
 
@@ -48,18 +48,18 @@ On first launch `config.json` is created (⚙ → *Edit config.json*):
 {
   "apps": [
     {
-      "id": "ordo",
-      "name": "Ordo",
-      "url": "https://ordo.mydomain.com",
+      "id": "crm",
+      "name": "CRM",
+      "url": "https://crm.mydomain.com",
       "icon": "📦",
       "allowed_origins": ["https://auth.mydomain.com"],
       "external_links_in_browser": true,
       "permissions": ["messaging", "exec", "fs", "clipboard", "serial", "open", "notes", "print"],
       "exec_allow": ["powershell", "notepad", "C:\\Tools\\labeler.exe"],
-      "fs_roots": ["C:\\Exchange\\Ordo"],
+      "fs_roots": ["C:\\Exchange\\CRM"],
       "zoom": 1.0,
       "user_agent": null,
-      "inject_script": "C:\\Brust\\ordo-adapter.js",
+      "inject_script": "C:\\Brust\\crm-adapter.js",
       "isolated": true,
       "incognito": false,
       "clear_on_exit": false,
@@ -154,7 +154,7 @@ window.addEventListener("brust:ready", async () => {
 
   // Local capabilities (each requires the matching permission)
   const r = await brust.exec("powershell", ["-Command", "Get-Date"], { timeout_ms: 10000 });
-  await brust.invoke("fs.write", { path: "C:\\Exchange\\Ordo\\order.txt", data: "..." });
+  await brust.invoke("fs.write", { path: "C:\\Exchange\\CRM\\order.txt", data: "..." });
   const text = await brust.invoke("clipboard.read");
   const ports = await brust.invoke("serial.list");
   const { handle } = await brust.invoke("serial.open", { port: "COM3", baud: 9600 });
@@ -163,7 +163,7 @@ window.addEventListener("brust:ready", async () => {
 
   // Messaging between apps and with external software ("messaging" permission)
   brust.handle("openOrder", async ({ number }, { from }) => { /* … */ return true; });
-  const ok = await brust.call("metodo", "compute", { code: "A1" });   // calls another app
+  const ok = await brust.call("erp", "compute", { code: "A1" });   // calls another app
   brust.emit("order.saved", { number: 12 }, "*");   // "*" = all apps and external software
   brust.emit("order.saved", { number: 12 });        // external software only
   brust.on("order.created", (data, meta) => console.log(meta.source, data));
@@ -172,10 +172,10 @@ window.addEventListener("brust:ready", async () => {
   await brust.invoke("notes.append", { notebook: "Shipping", text: "Order 12 shipped" });
   const printers = await brust.invoke("print.list");            // [{name, default}]
   await brust.invoke("print.page", { printer: "Label printer", silent: true });
-  await brust.invoke("print.file", { path: "C:\\Exchange\\Ordo\\label.pdf" });
+  await brust.invoke("print.file", { path: "C:\\Exchange\\CRM\\label.pdf" });
 
   // User interface
-  await brust.invoke("ui.open", { app: "metodo" });          // new tab
+  await brust.invoke("ui.open", { app: "erp" });          // new tab
   await brust.invoke("ui.set_title", { title: "Order 12" });
   await brust.invoke("ui.notify", { message: "Printing completed", native: true });
   await brust.invoke("ui.badge", { count: 3 });              // 0 removes the badge
@@ -214,28 +214,28 @@ External software (management systems, drivers, scripts, services) connects to
 connections. JSON messages:
 
 ```jsonc
-{"type":"emit", "target":"ordo", "event":"order.created", "data":{...}}   // target "*" = all
-{"type":"call", "id":1, "target":"ordo", "method":"openOrder", "params":{...}}
+{"type":"emit", "target":"crm", "event":"order.created", "data":{...}}   // target "*" = all
+{"type":"call", "id":1, "target":"crm", "method":"openOrder", "params":{...}}
 //  → {"type":"result","id":1,"ok":true,"result":...}
-{"type":"open", "app":"metodo"}        // or {"type":"open","url":"https://...","private":true}
-{"type":"focus", "app":"ordo"}
+{"type":"open", "app":"erp"}        // or {"type":"open","url":"https://...","private":true}
+{"type":"focus", "app":"crm"}
 {"type":"list", "id":2}                // tabs, panes and configured apps
 {"type":"open_template", "name":"Testing"}
 {"type":"notes_append", "notebook":"Test log", "text":"PZ-001: OK"}   // notebook default "Inbox"
-{"type":"cli", "args":["--open","ordo"]}   // same arguments as the command line
+{"type":"cli", "args":["--open","crm"]}   // same arguments as the command line
 {"type":"reload"}
 {"type":"ping"}
 ```
 
 Web apps can also **call local software**: `brust.call("tester", "startTest", {...})`
 is delivered to the client connected with `name=tester` as
-`{"type":"call","id":7,"method":"startTest","params":{...},"from":"ordo"}`.
+`{"type":"call","id":7,"method":"startTest","params":{...},"from":"crm"}`.
 The software answers with `{"type":"reply","id":7,"ok":true,"result":{...}}` (or `"ok":false,"error":"..."`)
 and the app's Promise resolves with the result. If the software disconnects before replying,
 the call fails immediately. A call first looks for an open app with that id, then for a program
 with that name (`"external:name"` forces the program).
 
-The client also receives `{"type":"event","source":"ordo","event":...,"data":...}` for every
+The client also receives `{"type":"event","source":"crm","event":...,"data":...}` for every
 `brust.emit` aimed at external software. Full PowerShell example:
 `examples/external_client.ps1`. `examples/tester.py` contains a sample local program
 (a test bench) and `examples/demo.html` a test page for the whole API. Client libraries for
@@ -308,12 +308,12 @@ A notes pane edits local Markdown notebooks: one `<name>.md` file per notebook i
 * **Command line and links**:
 
 ```text
-brust --open ordo                    open an app in a new tab
-brust --open ordo --url <url>        open a page of the app
+brust --open crm                    open an app in a new tab
+brust --open crm --url <url>        open a page of the app
 brust --url https://example.com      open a web page
 brust --template "Testing"           open a template
 brust --notes [notebook]             open the notes
-brust brust://open?app=ordo          the same as links: brust://open?app=…&url=…, brust://url?u=…,
+brust brust://open?app=crm          the same as links: brust://open?app=…&url=…, brust://url?u=…,
                                      brust://template?name=…, brust://notes?notebook=…
 ```
 

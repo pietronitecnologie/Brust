@@ -22,7 +22,7 @@ const log = (...a) => { const el = document.getElementById('log'); el.textConten
 window.addEventListener('brust:ready', () => {
   const p = window.brust;
   document.getElementById('who').textContent = p.appId + ' (pane ' + p.paneId + ')';
-  const other = p.appId === 'ordo' ? 'metodo' : 'ordo';
+  const other = p.appId === 'crm' ? 'erp' : 'crm';
   p.on('*', (data, meta) => log('event', meta.event, 'from', meta.source, data));
   p.handle('sum', ({a, b}, ctx) => { log('sum called by', ctx.from); return a + b; });
   const run = (f) => f().then(r => log('ok', r)).catch(e => log('error', e.message));
