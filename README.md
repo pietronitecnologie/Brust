@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/icon/brust-256.png" width="128" alt="Brust icon"></p>
+
 # Brust
 
 A Rust desktop client for any web application (ERP, CRM, MES, dashboards, intranet tools, …). It is a "closed" browser,

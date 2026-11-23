@@ -262,6 +262,11 @@ struct App {
 
 const INTERNAL_PROFILE: &str = "internal";
 
+/// Window icon (64×64 RGBA, generated from assets/icon/brust.svg).
+fn window_icon() -> Option<tao::window::Icon> {
+    tao::window::Icon::from_rgba(include_bytes!("../assets/icon/brust-64.rgba").to_vec(), 64, 64).ok()
+}
+
 fn permission_name(kind: &PermissionKind) -> &'static str {
     match kind {
         PermissionKind::Microphone => "microphone",
@@ -1534,6 +1539,7 @@ impl App {
         let (_, name, _) = self.content_label(&self.tabs[ti].panes[pi].content);
         let window = match WindowBuilder::new()
             .with_title(format!("{name} – Brust"))
+            .with_window_icon(window_icon())
             .with_inner_size(LogicalSize::new(1100.0, 750.0))
             .build(target)
         {
@@ -2571,6 +2577,7 @@ fn main() {
     let proxy = event_loop.create_proxy();
     let window = WindowBuilder::new()
         .with_title("Brust")
+        .with_window_icon(window_icon())
         .with_inner_size(LogicalSize::new(1400.0, 900.0))
         .with_min_inner_size(LogicalSize::new(640.0, 420.0))
         .build(&event_loop)

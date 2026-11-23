@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6d9bff"/>
+      <stop offset="1" stop-color="#2f43c4"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".22"/>
+      <stop offset=".55" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="url(#bg)"/>
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="url(#shine)"/>
+  <g fill="none" stroke="#fff" stroke-linecap="round">
+    <!-- arch -->
+    <path d="M52 156 Q128 34 204 156" stroke-width="17"/>
+    <!-- hangers -->
+    <path d="M90 113 V156 M128 96 V156 M166 113 V156" stroke-width="9" stroke-opacity=".9"/>
+    <!-- deck -->
+    <path d="M36 158 H220" stroke-width="18"/>
+    <!-- piers -->
+    <path d="M76 160 V206 M180 160 V206" stroke-width="16"/>
+  </g>
+  <!-- water line -->
+  <path d="M44 214 H212" stroke="#fff" stroke-opacity=".35" stroke-width="7" stroke-linecap="round"/>
+</svg>
