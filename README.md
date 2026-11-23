@@ -1,4 +1,4 @@
-# Ponte
+# Brust
 
 Client desktop in Rust dedicato agli applicativi web (Ordo, Metodo, …). È un browser "chiuso",
 senza Avanti/Indietro, che fa da **ponte** fra le applicazioni web, il PC locale (processi, file,
@@ -22,15 +22,17 @@ Requisiti Windows: Rust (toolchain MSVC) e WebView2 Runtime (già presente su Wi
 cargo build --release
 ```
 
-L'eseguibile è `target\release\ponte.exe`, un file unico con tutte le risorse incluse, xterm.js compreso.
+L'eseguibile è `target\release\brust.exe`, un file unico con tutte le risorse incluse, xterm.js compreso.
+Con la toolchain MSVC il loader WebView2 è collegato staticamente. Con la toolchain GNU/MinGW
+bisogna distribuire `WebView2Loader.dll` accanto all'exe.
 In Linux servono `libwebkit2gtk-4.1-dev` e `libgtk-3-dev`.
 
 ## Configurazione
 
 Al primo avvio viene creato `config.json` (⚙ → *Modifica config.json*):
 
-* Windows: `%APPDATA%\Pietroni\Ponte\config\config.json`
-* Linux: `~/.config/ponte/config.json`
+* Windows: `%APPDATA%\Pietroni\Brust\config\config.json`
+* Linux: `~/.config/brust/config.json`
 
 ```json
 {
@@ -47,7 +49,7 @@ Al primo avvio viene creato `config.json` (⚙ → *Modifica config.json*):
       "fs_roots": ["C:\\Scambio\\Ordo"],
       "zoom": 1.0,
       "user_agent": null,
-      "inject_script": "C:\\Ponte\\adattatore-ordo.js"
+      "inject_script": "C:\\Brust\\adattatore-ordo.js"
     }
   ],
   "shells": [
@@ -66,41 +68,41 @@ Al primo avvio viene creato `config.json` (⚙ → *Modifica config.json*):
 | `permissions` | Capacità concesse (vedi sotto). Senza permessi l'app può usare solo info e comandi UI. |
 | `exec_allow` | Programmi avviabili con `shell.exec` (confronto sul nome file). `"*"` = tutti. |
 | `fs_roots` | Cartelle accessibili con `fs.*`. `"*"` = tutto il disco. |
-| `inject_script` | JS iniettato in ogni pagina: adattatore per app che non conoscono Ponte. |
+| `inject_script` | JS iniettato in ogni pagina: adattatore per app che non conoscono Brust. |
 
 Dopo una modifica: ⚙ → *Ricarica configurazione*. I pannelli già aperti mantengono le
 impostazioni precedenti finché non vengono riaperti. Le modifiche al bridge WebSocket valgono dal
 prossimo avvio.
 
-## API per gli applicativi (`window.ponte`)
+## API per gli applicativi (`window.brust`)
 
 Lo script è iniettato in ogni pagina dell'app e risponde **solo alle origini dell'app**.
-L'evento `ponte:ready` segnala che è disponibile.
+L'evento `brust:ready` segnala che è disponibile.
 
 ```js
-window.addEventListener("ponte:ready", async () => {
-  const info = await ponte.info();                       // os, hostname, username, versione…
+window.addEventListener("brust:ready", async () => {
+  const info = await brust.info();                       // os, hostname, username, versione…
 
   // Capacità locali (richiedono il permesso corrispondente)
-  const r = await ponte.exec("powershell", ["-Command", "Get-Date"], { timeout_ms: 10000 });
-  await ponte.invoke("fs.write", { path: "C:\\Scambio\\Ordo\\ordine.txt", data: "..." });
-  const testo = await ponte.invoke("clipboard.read");
-  const porte = await ponte.invoke("serial.list");
-  const { handle } = await ponte.invoke("serial.open", { port: "COM3", baud: 9600 });
-  ponte.on("serial.data", d => console.log(d.handle, d.text, d.base64));
-  await ponte.invoke("serial.write", { handle, data: "PESO\r\n" });
+  const r = await brust.exec("powershell", ["-Command", "Get-Date"], { timeout_ms: 10000 });
+  await brust.invoke("fs.write", { path: "C:\\Scambio\\Ordo\\ordine.txt", data: "..." });
+  const testo = await brust.invoke("clipboard.read");
+  const porte = await brust.invoke("serial.list");
+  const { handle } = await brust.invoke("serial.open", { port: "COM3", baud: 9600 });
+  brust.on("serial.data", d => console.log(d.handle, d.text, d.base64));
+  await brust.invoke("serial.write", { handle, data: "PESO\r\n" });
 
   // Messaggistica fra app e con software esterni (permesso "messaging")
-  ponte.handle("apriOrdine", async ({ numero }, { from }) => { /* … */ return true; });
-  const ok = await ponte.call("metodo", "calcola", { codice: "A1" });   // invoca un'altra app
-  ponte.emit("ordine.salvato", { numero: 12 }, "*");   // "*" = tutte le app e i software esterni
-  ponte.emit("ordine.salvato", { numero: 12 });        // solo i software esterni
-  ponte.on("ordine.nuovo", (data, meta) => console.log(meta.source, data));
+  brust.handle("apriOrdine", async ({ numero }, { from }) => { /* … */ return true; });
+  const ok = await brust.call("metodo", "calcola", { codice: "A1" });   // invoca un'altra app
+  brust.emit("ordine.salvato", { numero: 12 }, "*");   // "*" = tutte le app e i software esterni
+  brust.emit("ordine.salvato", { numero: 12 });        // solo i software esterni
+  brust.on("ordine.nuovo", (data, meta) => console.log(meta.source, data));
 
   // Interfaccia
-  await ponte.invoke("ui.open", { app: "metodo" });          // nuova scheda
-  await ponte.invoke("ui.set_title", { title: "Ordine 12" });
-  await ponte.invoke("ui.notify", { message: "Stampa completata" });
+  await brust.invoke("ui.open", { app: "metodo" });          // nuova scheda
+  await brust.invoke("ui.set_title", { title: "Ordine 12" });
+  await brust.invoke("ui.notify", { message: "Stampa completata" });
 });
 ```
 
@@ -115,16 +117,16 @@ window.addEventListener("ponte:ready", async () => {
 | `fs.list`, `fs.exists`, `fs.mkdir`, `fs.remove` | `fs` | `{path}` (percorso assoluto, dentro `fs_roots`) |
 | `clipboard.read` / `clipboard.write` | `clipboard` | — / `{text}` |
 | `serial.list`, `serial.open`, `serial.write`, `serial.close` | `serial` | `{port, baud, data_bits?, parity?, stop_bits?}`, `{handle, data, encoding?}`, `{handle}` |
-| `bridge.call`, `bridge.clients` | `messaging` | `{target, method, params}` |
+| `bridge.call`, `bridge.clients` | `messaging` | `{target, method, params}`: `target` è un'app o un software locale |
 
-Eventi ricevuti con `ponte.on`: quelli emessi da altre app o software, più `serial.data`,
+Eventi ricevuti con `brust.on`: quelli emessi da altre app o software, più `serial.data`,
 `serial.closed`, `bridge.client_connected` e `bridge.client_disconnected`. Con `"*"` si ricevono tutti.
 
 ## Bridge per software locali (WebSocket)
 
 Software esterni (gestionali, driver, script, servizi) si collegano a
 `ws://127.0.0.1:47800/?token=TOKEN&name=nome-client`, oppure inviano il token nell'header
-`X-Ponte-Token`. Indirizzo e token sono in ⚙ Impostazioni. Il server accetta solo connessioni
+`X-Brust-Token`. Indirizzo e token sono in ⚙ Impostazioni. Il server accetta solo connessioni
 locali. Messaggi JSON:
 
 ```jsonc
@@ -138,9 +140,20 @@ locali. Messaggi JSON:
 {"type":"ping"}
 ```
 
+Le web app possono anche **chiamare i software locali**: `brust.call("tester", "startTest", {...})`
+viene recapitata al client collegato con `name=tester` come
+`{"type":"call","id":7,"method":"startTest","params":{...},"from":"ordo"}`.
+Il software risponde con `{"type":"reply","id":7,"ok":true,"result":{...}}` (o `"ok":false,"error":"..."`)
+e la Promise dell'app si risolve con il risultato. Se il software si disconnette prima di rispondere,
+la chiamata fallisce subito. Una chiamata cerca prima un'app aperta con quell'id, poi un software
+con quel nome (`"external:nome"` forza il software).
+
 Il client riceve inoltre `{"type":"event","source":"ordo","event":...,"data":...}` per ogni
-`ponte.emit` diretto ai software esterni. Esempio completo in PowerShell:
-`examples/cliente_esterno.ps1`. In `examples/demo.html` c'è una pagina di prova di tutte le API.
+`brust.emit` diretto ai software esterni. Esempio completo in PowerShell:
+`examples/cliente_esterno.ps1`. In `examples/tester.py` c'è un software locale di esempio
+(banco di collaudo) e in `examples/demo.html` una pagina di prova di tutte le API.
+
+**Come strutturare web app e software locali: vedi [GUIDA.md](GUIDA.md).**
 
 ## Uso
 

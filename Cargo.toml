@@ -1,5 +1,5 @@
 [package]
-name = "ponte"
+name = "brust"
 version = "0.1.0"
 edition = "2024"
 description = "Client desktop dedicato per applicativi web, con bridge verso hardware/software locale, tab e tile."
@@ -17,7 +17,7 @@ serde_json = "1.0.154"
 serialport = { version = "4.10.1", default-features = false }
 tao = "0.37.3"
 tungstenite = "0.30.0"
-wry = "0.57.3"
+wry = { version = "0.57.3", features = ["devtools"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"

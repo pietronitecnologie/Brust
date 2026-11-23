@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<title>Ponte</title>
+<title>Brust</title>
 <style>
 :root {
   --bg: #15171c; --bar: #1b1e24; --panel: #20242b; --panel2: #262b33; --line: #2e333c;
@@ -375,7 +375,7 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
   function renderSettings() {
     if (!$("overlay").classList.contains("show")) return;
     var b = S.bridge;
-    var h = "<h2>Ponte <span style='color:var(--muted);font-weight:400;font-size:13px'>v" + esc(S.version) + "</span></h2>";
+    var h = "<h2>Brust <span style='color:var(--muted);font-weight:400;font-size:13px'>v" + esc(S.version) + "</span></h2>";
     if (S.configError) h += "<div class='err'>" + esc(S.configError) + "</div>";
     h += "<div class='row'><button class='btn' data-c='open_config'>Modifica config.json</button><button class='btn ghost' data-c='reload_config'>Ricarica configurazione</button><button class='btn ghost' data-c='open_config_dir'>Apri cartella</button></div>";
     h += "<div style='margin-top:8px;color:var(--muted);font-size:12px'>" + esc(S.configPath) + "</div>";
@@ -409,14 +409,14 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
   ["mousedown", "mouseup", "auxclick"].forEach(function (t) { window.addEventListener(t, function (e) { if (e.button === 3 || e.button === 4) e.preventDefault(); }, true); });
 
   var toastTimer = 0;
-  window.ponteShell = {
+  window.brustShell = {
     update: function (state) {
       S = state;
       S.catalogSig = JSON.stringify([S.apps.map(function (a) { return a.id + a.name + a.url + a.icon; }), S.shells.map(function (s) { return s.id + s.name; })]);
       document.documentElement.style.setProperty("--bar-h", S.barHeight + "px");
       document.documentElement.style.setProperty("--head-h", S.headerHeight + "px");
       renderTabs(); renderLayouts(); renderPanes(); renderSettings();
-      document.title = (S.tabs[S.active] ? S.tabs[S.active].title + " – " : "") + "Ponte";
+      document.title = (S.tabs[S.active] ? S.tabs[S.active].title + " – " : "") + "Brust";
     },
     toast: function (msg) {
       var t = $("toast"); t.textContent = msg; t.style.display = "block";

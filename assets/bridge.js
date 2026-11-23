@@ -1,8 +1,8 @@
-// Ponte bridge – iniettato in ogni pagina degli applicativi.
-// API: window.ponte (vedi README.md).
+// Brust bridge – iniettato in ogni pagina degli applicativi.
+// API: window.brust (vedi README.md).
 (function () {
-  if (window.ponte) return;
-  var CFG = __PONTE_CFG__;
+  if (window.brust) return;
+  var CFG = __BRUST_CFG__;
   var ipc = window.ipc;
   if (!ipc) return;
   var seq = 0;
@@ -32,15 +32,15 @@
       var s = listeners.get(name);
       if (!s) return;
       s.forEach(function (fn) {
-        try { fn(data, Object.assign({ event: event }, meta)); } catch (e) { console.error("[ponte]", e); }
+        try { fn(data, Object.assign({ event: event }, meta)); } catch (e) { console.error("[brust]", e); }
       });
     });
     try {
-      window.dispatchEvent(new CustomEvent("ponte:" + event, { detail: { data: data, meta: meta } }));
+      window.dispatchEvent(new CustomEvent("brust:" + event, { detail: { data: data, meta: meta } }));
     } catch (e) {}
   }
 
-  window.__ponte_recv = function (m) {
+  window.__brust_recv = function (m) {
     switch (m.t) {
       case "reply": {
         var p = pending.get(m.id);
@@ -84,7 +84,7 @@
   window.addEventListener("pointerdown", function () { post({ t: "focus" }); }, true);
   window.addEventListener("focus", function () { post({ t: "focus" }); });
 
-  window.ponte = Object.freeze({
+  window.brust = Object.freeze({
     version: CFG.version,
     appId: CFG.appId,
     paneId: CFG.paneId,
@@ -98,11 +98,18 @@
     /** Registra un metodo invocabile da altre app o software esterni. */
     handle: function (method, fn) { handlers.set(method, fn); return function () { handlers.delete(method); }; },
     /** Invoca un metodo registrato da un'altra app aperta. */
-    call: function (target, method, params) { return invoke("bridge.call", { target: target, method: method, params: params === undefined ? null : params }); },
+    /** Invoca un metodo di un'altra app aperta o di un software locale collegato al bridge.
+        opts.timeout_ms: rifiuta la Promise se la risposta non arriva in tempo. */
+    call: function (target, method, params, opts) {
+      var p = invoke("bridge.call", { target: target, method: method, params: params === undefined ? null : params });
+      var ms = opts && opts.timeout_ms;
+      if (!ms) return p;
+      return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error("timeout: nessuna risposta da " + target + " in " + ms + " ms")); }, ms); })]);
+    },
     exec: function (program, args, opts) { return invoke("shell.exec", Object.assign({ program: program, args: args || [] }, opts || {})); },
     open: function (target) { return invoke("shell.open", { target: target }); },
     info: function () { return invoke("system.info"); }
   });
-  var ready = function () { window.dispatchEvent(new CustomEvent("ponte:ready", { detail: window.ponte })); };
+  var ready = function () { window.dispatchEvent(new CustomEvent("brust:ready", { detail: window.brust })); };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", ready); else setTimeout(ready, 0);
 })();

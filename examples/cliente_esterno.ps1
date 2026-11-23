@@ -1,4 +1,4 @@
-# Esempio: software locale che dialoga con gli applicativi aperti in Ponte.
+# Esempio: software locale che dialoga con gli applicativi aperti in Brust.
 # Uso: powershell -File cliente_esterno.ps1 -Token <token da Impostazioni>
 param(
     [Parameter(Mandatory = $true)][string]$Token,
@@ -25,11 +25,11 @@ function Receive() {
 
 Receive | Out-Host                                  # messaggio di benvenuto
 
-# 1) Evento verso tutte le app (ponte.on("ordine.nuovo", ...))
+# 1) Evento verso tutte le app (brust.on("ordine.nuovo", ...))
 Send @{ type = "emit"; target = "*"; event = "ordine.nuovo"; data = @{ numero = 123 } }
 Receive | Out-Host
 
-# 2) Chiamata a un metodo registrato da Ordo con ponte.handle("somma", ...)
+# 2) Chiamata a un metodo registrato da Ordo con brust.handle("somma", ...)
 Send @{ type = "call"; id = 1; target = "ordo"; method = "somma"; params = @{ a = 20; b = 22 } }
 do { $m = Receive } while ($m.type -ne "result" -or $m.id -ne 1)
 "Risultato: $($m.result)"

@@ -44,7 +44,7 @@ fn handle(stream: TcpStream, client: u32, token: String, proxy: EventLoopProxy<U
         let query = req.uri().query().unwrap_or("");
         let header_token = req
             .headers()
-            .get("x-ponte-token")
+            .get("x-brust-token")
             .and_then(|v| v.to_str().ok())
             .map(str::to_string);
         let given = query_param(query, "token").or(header_token).unwrap_or_default();

@@ -1,2 +1,4 @@
 /target
 *.tmp
+/dist
+/Brust-windows-x64.zip

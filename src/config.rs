@@ -240,10 +240,10 @@ pub struct Paths {
 
 impl Paths {
     pub fn new() -> Self {
-        let dirs = directories::ProjectDirs::from("it", "Pietroni", "Ponte");
+        let dirs = directories::ProjectDirs::from("it", "Pietroni", "Brust");
         let (config_dir, data_dir) = match dirs {
             Some(d) => (d.config_dir().to_path_buf(), d.data_local_dir().to_path_buf()),
-            None => (PathBuf::from("ponte-config"), PathBuf::from("ponte-data")),
+            None => (PathBuf::from("brust-config"), PathBuf::from("brust-data")),
         };
         let _ = fs::create_dir_all(&config_dir);
         let _ = fs::create_dir_all(&data_dir);

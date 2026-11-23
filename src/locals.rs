@@ -258,7 +258,7 @@ pub fn system_info() -> Value {
         .or_else(|| std::fs::read_to_string("/etc/hostname").ok().map(|s| s.trim().to_string()));
     let user = std::env::var("USERNAME").or_else(|_| std::env::var("USER")).ok();
     json!({
-        "client": "ponte",
+        "client": "brust",
         "version": env!("CARGO_PKG_VERSION"),
         "os": std::env::consts::OS,
         "arch": std::env::consts::ARCH,
@@ -403,9 +403,9 @@ mod tests {
     #[test]
     fn path_roots() {
         let a = app();
-        let inside = std::env::temp_dir().join("ponte-test-file.txt");
+        let inside = std::env::temp_dir().join("brust-test-file.txt");
         assert!(check_path(&a, inside.to_str().unwrap(), true).is_ok());
-        let tricky = std::env::temp_dir().join("..").join("ponte-outside.txt");
+        let tricky = std::env::temp_dir().join("..").join("brust-outside.txt");
         assert!(check_path(&a, tricky.to_str().unwrap(), true).is_err());
         assert!(check_path(&a, "relative.txt", true).is_err());
     }

@@ -2,7 +2,7 @@
 <html lang="it"><head><meta charset="utf-8"><title>Demo bridge</title>
 <style>body{font-family:system-ui,sans-serif;margin:16px;background:#f6f7f9;color:#222}button{margin:3px;padding:6px 10px}pre{background:#fff;border:1px solid #ddd;padding:8px;height:220px;overflow:auto;font-size:12px}</style>
 </head><body>
-<h3>Demo bridge Ponte – <span id="who">?</span></h3>
+<h3>Demo bridge Brust – <span id="who">?</span></h3>
 <div>
   <button id="info">system.info</button>
   <button id="emit">emit → tutte le app</button>
@@ -10,12 +10,13 @@
   <button id="exec">shell.exec</button>
   <button id="clip">clipboard.read</button>
   <button id="serial">serial.list</button>
+  <button id="test">▶ Avvia test (software locale "tester")</button>
 </div>
 <pre id="log"></pre>
 <script>
 const log = (...a) => { const el = document.getElementById('log'); el.textContent = a.map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' ') + '\n' + el.textContent; };
-window.addEventListener('ponte:ready', () => {
-  const p = window.ponte;
+window.addEventListener('brust:ready', () => {
+  const p = window.brust;
   document.getElementById('who').textContent = p.appId + ' (pannello ' + p.paneId + ')';
   const other = p.appId === 'ordo' ? 'metodo' : 'ordo';
   p.on('*', (data, meta) => log('evento', meta.event, 'da', meta.source, data));
@@ -27,6 +28,15 @@ window.addEventListener('ponte:ready', () => {
   exec.onclick = () => run(() => p.exec(navigator.platform.startsWith('Win') ? 'cmd' : 'uname', navigator.platform.startsWith('Win') ? ['/c','ver'] : ['-a']));
   clip.onclick = () => run(() => p.invoke('clipboard.read'));
   serial.onclick = () => run(() => p.invoke('serial.list'));
+  // Flusso completo: app web → client → software locale → client → app web
+  p.on('test.progress', d => log('avanzamento', d.percent + '%', d.step));
+  test.onclick = async () => {
+    log('richiesta test inviata…');
+    try {
+      const esito = await p.call('tester', 'startTest', { codice: 'PZ-001', ripetizioni: 3 }, { timeout_ms: 60000 });
+      log('ESITO', esito);
+    } catch (e) { log('test fallito:', e.message); }
+  };
   log('bridge pronto', p.version);
 });
 </script></body></html>

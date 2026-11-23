@@ -1,9 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-//! Ponte – client desktop dedicato per applicativi web.
+//! Brust – client desktop dedicato per applicativi web.
 //!
 //! * schede (tab), ciascuna con un tileset di 1–4 pannelli ridimensionabili;
 //! * ogni pannello mostra un applicativo, un URL o un terminale (PowerShell, cmd, …);
-//! * bridge JS (`window.ponte`) verso capacità locali e verso software esterni (WebSocket).
+//! * bridge JS (`window.brust`) verso capacità locali e verso software esterni (WebSocket).
 
 mod assets;
 mod config;
@@ -174,6 +174,8 @@ struct App {
     overlay: bool,
     clients: HashMap<u32, WsClient>,
     calls: HashMap<u64, Caller>,
+    /// Chiamate in corso verso software esterni: id chiamata → client WebSocket che deve rispondere.
+    calls_to_ws: HashMap<u64, u32>,
     next_call: u64,
     bridge_status: String,
 }
@@ -208,6 +210,7 @@ impl App {
             overlay: false,
             clients: HashMap::new(),
             calls: HashMap::new(),
+            calls_to_ws: HashMap::new(),
             next_call: 1,
             bridge_status: "non avviato".into(),
         };
@@ -394,7 +397,7 @@ impl App {
                     _ => app.url.clone(),
                 };
                 let cfg = json!({"paneId": pane_id, "appId": app.id, "version": env!("CARGO_PKG_VERSION")});
-                let mut script = assets::BRIDGE_JS.replace("__PONTE_CFG__", &cfg.to_string());
+                let mut script = assets::BRIDGE_JS.replace("__BRUST_CFG__", &cfg.to_string());
                 if let Some(path) = &app.inject_script {
                     match std::fs::read_to_string(path) {
                         Ok(extra) => {
@@ -723,12 +726,12 @@ impl App {
             "configPath": self.paths.config().to_string_lossy(),
             "configError": self.config_error,
         });
-        let _ = shell.evaluate_script(&format!("window.ponteShell && ponteShell.update({state})"));
+        let _ = shell.evaluate_script(&format!("window.brustShell && brustShell.update({state})"));
     }
 
     fn toast(&self, msg: &str) {
         if let Some(s) = &self.shell {
-            let _ = s.evaluate_script(&format!("window.ponteShell && ponteShell.toast({})", json!(msg)));
+            let _ = s.evaluate_script(&format!("window.brustShell && brustShell.toast({})", json!(msg)));
         }
     }
 
@@ -969,7 +972,7 @@ impl App {
 
     fn send_to_pane(&self, pane: u32, msg: &Value) -> bool {
         match self.find_pane(pane).and_then(|(ti, pi)| self.tabs[ti].panes[pi].view.as_ref()) {
-            Some(v) => v.evaluate_script(&format!("window.__ponte_recv && window.__ponte_recv({msg})")).is_ok(),
+            Some(v) => v.evaluate_script(&format!("window.__brust_recv && window.__brust_recv({msg})")).is_ok(),
             None => false,
         }
     }
@@ -1019,16 +1022,38 @@ impl App {
         }
     }
 
+    /// Client WebSocket con il nome dato (es. `?name=tester`); accetta anche `external:nome`.
+    fn ws_client_named(&self, target: &str) -> Option<u32> {
+        let name = target.strip_prefix("external:").unwrap_or(target);
+        let mut ids: Vec<u32> = self.clients.iter().filter(|(_, c)| c.name == name).map(|(id, _)| *id).collect();
+        ids.sort();
+        ids.last().copied()
+    }
+
+    /// Avvia una chiamata verso un'app aperta o, se non esiste, verso un software esterno con quel nome.
     fn start_call(&mut self, caller: Caller, target: &str, method: &str, params: &Value, from: &str) -> Result<(), String> {
-        let pane = self.call_target(target).ok_or_else(|| format!("applicativo '{target}' non aperto"))?;
+        let pane = if target.starts_with("external:") { None } else { self.call_target(target) };
+        let client = if pane.is_none() { self.ws_client_named(target) } else { None };
+        if pane.is_none() && client.is_none() {
+            return Err(format!("'{target}' non disponibile: nessuna app aperta né software collegato con questo nome"));
+        }
         let id = self.next_call;
         self.next_call += 1;
         self.calls.insert(id, caller);
-        self.send_to_pane(pane, &json!({"t": "call", "id": id, "method": method, "params": params, "from": from}));
+        if let Some(pane) = pane {
+            self.send_to_pane(pane, &json!({"t": "call", "id": id, "method": method, "params": params, "from": from}));
+        } else if let Some(client) = client {
+            self.calls_to_ws.insert(id, client);
+            let msg = json!({"type": "call", "id": id, "method": method, "params": params, "from": from});
+            if let Some(c) = self.clients.get(&client) {
+                let _ = c.tx.send(msg.to_string());
+            }
+        }
         Ok(())
     }
 
     fn finish_call(&mut self, id: u64, result: Result<Value, String>) {
+        self.calls_to_ws.remove(&id);
         match self.calls.remove(&id) {
             Some(Caller::Pane { pane, id }) => {
                 self.send_to_pane(pane, &ok_reply(id, result));
@@ -1279,14 +1304,19 @@ impl App {
                 });
                 let _ = tx.send(hello.to_string());
                 self.clients.insert(client, WsClient { name: name.clone(), tx });
-                self.deliver_event(Some("*"), "bridge.client_connected", &json!({"id": client, "name": name}), "ponte", None);
+                self.deliver_event(Some("*"), "bridge.client_connected", &json!({"id": client, "name": name}), "brust", None);
                 self.push_state();
             }
             WsEvent::Disconnected { client } => {
                 if let Some(c) = self.clients.remove(&client) {
-                    self.deliver_event(Some("*"), "bridge.client_disconnected", &json!({"id": client, "name": c.name}), "ponte", None);
+                    self.deliver_event(Some("*"), "bridge.client_disconnected", &json!({"id": client, "name": c.name}), "brust", None);
                 }
                 self.calls.retain(|_, c| !matches!(c, Caller::Ws { client: cl, .. } if *cl == client));
+                // Le chiamate in attesa di risposta da questo software falliscono subito.
+                let orphaned: Vec<u64> = self.calls_to_ws.iter().filter(|(_, c)| **c == client).map(|(id, _)| *id).collect();
+                for id in orphaned {
+                    self.finish_call(id, Err("il software esterno si è disconnesso prima di rispondere".into()));
+                }
                 self.push_state();
             }
             WsEvent::Message { client, text } => {
@@ -1358,6 +1388,18 @@ impl App {
                             None => reply(self, err(format!("applicativo '{target}' non aperto"))),
                         }
                     }
+                    "reply" => {
+                        // Risposta a una chiamata ricevuta da un'app ({"type":"call",...}).
+                        let call_id = m["id"].as_u64().unwrap_or(0);
+                        if self.calls_to_ws.get(&call_id) == Some(&client) {
+                            let res = if m["ok"].as_bool().unwrap_or(true) {
+                                Ok(m["result"].clone())
+                            } else {
+                                Err(m["error"].as_str().unwrap_or("errore").to_string())
+                            };
+                            self.finish_call(call_id, res);
+                        }
+                    }
                     "reload" => {
                         self.reload_tab();
                         reply(self, ok(Value::Null));
@@ -1396,12 +1438,12 @@ impl App {
                 self.send_to_pane(pane, &ok_reply(id, result));
             }
             UserEvent::SerialData { pane, handle, data } => {
-                let msg = json!({"t": "event", "event": "serial.data", "source": "ponte",
+                let msg = json!({"t": "event", "event": "serial.data", "source": "brust",
                     "data": {"handle": handle, "base64": B64.encode(&data), "text": String::from_utf8_lossy(&data)}});
                 self.send_to_pane(pane, &msg);
             }
             UserEvent::SerialClosed { pane, handle, error } => {
-                let msg = json!({"t": "event", "event": "serial.closed", "source": "ponte", "data": {"handle": handle, "error": error}});
+                let msg = json!({"t": "event", "event": "serial.closed", "source": "brust", "data": {"handle": handle, "error": error}});
                 self.send_to_pane(pane, &msg);
             }
             UserEvent::Title { pane, title } => {
@@ -1447,7 +1489,7 @@ fn main() {
     let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
     let proxy = event_loop.create_proxy();
     let window = WindowBuilder::new()
-        .with_title("Ponte")
+        .with_title("Brust")
         .with_inner_size(LogicalSize::new(1400.0, 900.0))
         .with_min_inner_size(LogicalSize::new(640.0, 420.0))
         .build(&event_loop)

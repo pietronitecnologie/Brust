@@ -1,9 +1,9 @@
-//! Risorse interne servite tramite il protocollo personalizzato `ponte://`.
+//! Risorse interne servite tramite il protocollo personalizzato `brust://`.
 
 use std::borrow::Cow;
 use wry::http::{header::CONTENT_TYPE, Request, Response};
 
-pub const SCHEME: &str = "ponte";
+pub const SCHEME: &str = "brust";
 pub const BRIDGE_JS: &str = include_str!("../assets/bridge.js");
 
 fn lookup(path: &str) -> Option<(&'static [u8], &'static str)> {
@@ -17,7 +17,7 @@ fn lookup(path: &str) -> Option<(&'static [u8], &'static str)> {
     })
 }
 
-/// URL di una risorsa interna (su Windows WebView2 usa `http://ponte.localhost/`).
+/// URL di una risorsa interna (su Windows WebView2 usa `http://brust.localhost/`).
 pub fn url(path: &str) -> String {
     if cfg!(windows) {
         format!("http://{SCHEME}.localhost/{path}")

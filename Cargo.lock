@@ -183,6 +183,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "brust"
+version = "0.1.0"
+dependencies = [
+ "arboard",
+ "base64",
+ "directories",
+ "env_logger",
+ "gtk",
+ "log",
+ "open",
+ "portable-pty",
+ "serde",
+ "serde_json",
+ "serialport",
+ "tao",
+ "tungstenite",
+ "wry",
+]
+
+[[package]]
 name = "bytemuck"
 version = "1.25.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2022,26 +2042,6 @@ dependencies = [
  "fdeflate",
  "flate2",
  "miniz_oxide 0.8.9",
-]
-
-[[package]]
-name = "ponte"
-version = "0.1.0"
-dependencies = [
- "arboard",
- "base64",
- "directories",
- "env_logger",
- "gtk",
- "log",
- "open",
- "portable-pty",
- "serde",
- "serde_json",
- "serialport",
- "tao",
- "tungstenite",
- "wry",
 ]
 
 [[package]]
