@@ -409,6 +409,7 @@ impl App {
             app.launch(l);
         }
         app.start_background_jobs();
+        app.apply_theme();
         app
     }
 
@@ -1103,6 +1104,13 @@ impl App {
             "apps": self.config.apps.iter().map(|a| json!({"id": a.id, "name": a.name, "icon": a.icon, "url": a.url, "permissions": a.permissions,
                 "isolated": a.is_isolated(), "incognito": a.incognito, "clearOnExit": a.clear_on_exit})).collect::<Vec<_>>(),
             "shells": self.config.shells.iter().map(|s| json!({"id": s.id, "name": s.name, "program": s.program})).collect::<Vec<_>>(),
+            "appDefs": self.config.apps,
+            "theme": self.config.theme,
+            "effectiveTheme": self.effective_theme(),
+            "privacyConfig": self.config.privacy,
+            "privacyManaged": self.remote.as_ref().is_some_and(|r| r.get("privacy").is_some()),
+            "appsManaged": self.apps_managed(),
+            "permissionNames": config::PERMISSIONS,
             "devtools": self.config.devtools && !self.kiosk(),
             "bridge": {
                 "enabled": self.config.bridge.enabled, "port": self.config.bridge.port, "token": self.config.bridge.token,
@@ -1177,6 +1185,7 @@ impl App {
                 "new_tab" | "close_tab" | "move_tab" | "rename_tab" | "set_layout" | "close_pane" | "swap_panes" | "pick"
                     | "set_content" | "detach" | "open_config" | "open_config_dir" | "reload_config" | "save_template"
                     | "delete_template" | "devtools" | "set_pin" | "clear_pin" | "revoke_grant" | "install_update"
+                    | "app_save" | "app_delete" | "privacy_save" | "set_theme"
             )
         {
             return;
@@ -1331,6 +1340,34 @@ impl App {
                 let _ = open::that_detached(&self.paths.config_dir);
             }
             "reload_config" => self.reload_config(),
+            "app_save" => {
+                let original = m["original"].as_str().map(str::to_string);
+                match serde_json::from_value::<AppDef>(m["app"].clone()) {
+                    Ok(app) => self.save_app(app, original.as_deref()),
+                    Err(e) => self.shell_call("appError", &json!(format!("Invalid data: {e}"))),
+                }
+            }
+            "set_theme" => {
+                let theme = m["theme"].as_str().unwrap_or("system");
+                if matches!(theme, "system" | "dark" | "light") {
+                    match config::save_config_key(&self.paths, "theme", json!(theme)) {
+                        Ok(()) => {
+                            self.reload_config();
+                            self.apply_theme();
+                        }
+                        Err(e) => self.toast(&e),
+                    }
+                }
+            }
+            "privacy_save" => match serde_json::from_value::<config::PrivacyConfig>(m["privacy"].clone()) {
+                Ok(p) => self.save_privacy(p),
+                Err(e) => self.shell_call("privacyError", &json!(format!("Invalid data: {e}"))),
+            },
+            "app_delete" => {
+                if let Some(id) = m["id"].as_str().map(str::to_string) {
+                    self.delete_app(&id);
+                }
+            }
             "confirm_reply" => {
                 let seq = m["seq"].as_u64().unwrap_or(0);
                 let decision = m["decision"].as_str().unwrap_or("deny").to_string();
@@ -1676,6 +1713,171 @@ impl App {
             }
             _ => {}
         }
+    }
+
+    /// True when the central configuration defines the app list (editing is then disabled).
+    fn apps_managed(&self) -> bool {
+        self.remote.as_ref().is_some_and(|r| r.get("apps").is_some())
+    }
+
+    /// Adds or updates an app from Settings → Apps and saves it to config.json.
+    fn save_app(&mut self, mut app: AppDef, original: Option<&str>) {
+        if self.apps_managed() {
+            return self.shell_call("appError", &json!("The apps are managed by the central configuration"));
+        }
+        let mut apps = self.config.apps.clone();
+        if let Err(e) = config::validate_app(&mut app, &apps, original) {
+            return self.shell_call("appError", &json!(e));
+        }
+        match original.and_then(|o| apps.iter().position(|a| a.id == o)) {
+            Some(i) => apps[i] = app.clone(),
+            None => apps.push(app.clone()),
+        }
+        if let Err(e) = config::save_apps(&self.paths, &apps) {
+            return self.shell_call("appError", &json!(e));
+        }
+        self.reload_config();
+        // An ID change also updates the panes and the saved session.
+        if let Some(old) = original.filter(|o| *o != app.id) {
+            for p in self.tabs.iter_mut().flat_map(|t| t.panes.iter_mut()) {
+                if let PaneContent::App { app: a, .. } = &mut p.content {
+                    if a == old {
+                        *a = app.id.clone();
+                    }
+                }
+            }
+        }
+        self.reopen_app_panes(&app.id);
+        self.save_session();
+        self.shell_call("appSaved", &json!(app.id));
+        self.toast(&format!("\"{}\" saved", app.name));
+    }
+
+    /// Saves Settings → Privacy. Panes whose tracker blocking changes are reopened.
+    fn save_privacy(&mut self, mut p: config::PrivacyConfig) {
+        if self.remote.as_ref().is_some_and(|r| r.get("privacy").is_some()) {
+            return self.shell_call("privacyError", &json!("Privacy settings are managed by the central configuration"));
+        }
+        if let Err(e) = config::validate_privacy(&mut p) {
+            return self.shell_call("privacyError", &json!(e));
+        }
+        let before: Vec<(u32, String)> = self.web_pane_profiles();
+        if let Err(e) = config::save_config_key(&self.paths, "privacy", serde_json::to_value(&p).unwrap_or_default()) {
+            return self.shell_call("privacyError", &json!(e));
+        }
+        let lists_changed = p.blocklists != self.config.privacy.blocklists
+            || p.block_domains != self.config.privacy.block_domains
+            || p.allow_domains != self.config.privacy.allow_domains;
+        self.reload_config();
+        if lists_changed && self.adblock.is_some() {
+            self.toast("Block list changes take effect on the next start of Brust");
+        }
+        // Reopen panes whose browser profile changed (tracker blocking switched on or off).
+        let after: HashMap<u32, String> = self.web_pane_profiles().into_iter().collect();
+        for (id, profile) in before {
+            if after.get(&id).is_some_and(|p| *p != profile) {
+                if let Some((ti, pi)) = self.find_pane(id) {
+                    self.tabs[ti].panes[pi].view = None;
+                    if self.tabs[ti].is_floating() {
+                        self.create_view(ti, pi);
+                    }
+                }
+            }
+        }
+        self.ensure_views();
+        self.relayout();
+        self.push_state();
+        self.shell_call("privacySaved", &Value::Null);
+    }
+
+    /// Browser profile of every loaded web pane.
+    fn web_pane_profiles(&self) -> Vec<(u32, String)> {
+        self.tabs
+            .iter()
+            .flat_map(|t| t.panes.iter())
+            .filter(|p| p.view.is_some() && matches!(p.content, PaneContent::App { .. } | PaneContent::Url { .. }))
+            .map(|p| (p.id, self.profile_for(&p.content).0))
+            .collect()
+    }
+
+    /// Theme actually used ("dark" or "light").
+    fn effective_theme(&self) -> &'static str {
+        match self.config.theme.as_str() {
+            "light" => "light",
+            "dark" => "dark",
+            _ => match self.host.window.theme() {
+                tao::window::Theme::Light => "light",
+                _ => "dark",
+            },
+        }
+    }
+
+    /// Applies the theme to the window frame and to the internal pages (UI, terminals, notes).
+    fn apply_theme(&self) {
+        #[cfg_attr(target_os = "linux", allow(unused_variables))]
+        let frame = match self.config.theme.as_str() {
+            "light" => Some(tao::window::Theme::Light),
+            "dark" => Some(tao::window::Theme::Dark),
+            _ => None,
+        };
+        // Title bar colour (Windows/macOS). On Linux GTK re-themes the whole window instead,
+        // which breaks the embedded webviews, so the frame follows the desktop theme there.
+        #[cfg(not(target_os = "linux"))]
+        self.host.window.set_theme(frame);
+        let theme = self.effective_theme();
+        for t in &self.tabs {
+            #[cfg(not(target_os = "linux"))]
+            if let Some(w) = &t.window {
+                w.set_theme(frame);
+            }
+            for p in &t.panes {
+                if let (PaneContent::Terminal { .. } | PaneContent::Notes { .. }, Some(v)) = (&p.content, &p.view) {
+                    let _ = v.evaluate_script(&format!("window.__brust_theme && __brust_theme('{theme}')"));
+                }
+            }
+        }
+        self.push_state();
+    }
+
+    fn delete_app(&mut self, id: &str) {
+        if self.apps_managed() {
+            return self.shell_call("appError", &json!("The apps are managed by the central configuration"));
+        }
+        let mut apps = self.config.apps.clone();
+        apps.retain(|a| a.id != id);
+        if let Err(e) = config::save_apps(&self.paths, &apps) {
+            return self.shell_call("appError", &json!(e));
+        }
+        for ti in 0..self.tabs.len() {
+            for pi in 0..self.tabs[ti].panes.len() {
+                if matches!(&self.tabs[ti].panes[pi].content, PaneContent::App { app, .. } if app == id) {
+                    self.drop_view(ti, pi);
+                    self.tabs[ti].panes[pi].content = PaneContent::Empty;
+                }
+            }
+        }
+        self.reload_config();
+        self.relayout();
+        self.push_state();
+        self.save_session();
+        self.shell_call("appSaved", &Value::Null);
+    }
+
+    /// Recreates the open panes of an app so that new settings apply immediately.
+    fn reopen_app_panes(&mut self, id: &str) {
+        for ti in 0..self.tabs.len() {
+            for pi in 0..self.tabs[ti].panes.len() {
+                if matches!(&self.tabs[ti].panes[pi].content, PaneContent::App { app, .. } if app == id) && self.tabs[ti].panes[pi].view.is_some() {
+                    self.tabs[ti].panes[pi].view = None;
+                    if self.tabs[ti].is_floating() {
+                        self.create_view(ti, pi);
+                    }
+                }
+            }
+        }
+        self.ensure_views();
+        self.relayout();
+        self.push_state();
     }
 
     fn reload_config(&mut self) {
@@ -2090,7 +2292,12 @@ impl App {
         let name = m["name"].as_str().unwrap_or("").to_string();
         let error = |e: String| json!({"kind": "error", "message": e});
         match m["t"].as_str().unwrap_or("") {
-            "notes_init" => send(self, json!({"kind": "init", "notebook": notebook, "list": self.notes.list()})),
+            "notes_init" => {
+                if let Some(view) = &self.tabs[ti].panes[pi].view {
+                    let _ = view.evaluate_script(&format!("window.__brust_theme && __brust_theme('{}')", self.effective_theme()));
+                }
+                send(self, json!({"kind": "init", "notebook": notebook, "list": self.notes.list()}));
+            }
             "notes_list" => send(self, json!({"kind": "list", "list": self.notes.list()})),
             "notes_read" => match self.notes.read(&name) {
                 Ok(text) => send(self, json!({"kind": "read", "name": name, "text": text})),
@@ -2170,6 +2377,9 @@ impl App {
         let pane_id = self.tabs[ti].panes[pi].id;
         match m["t"].as_str().unwrap_or("") {
             "pty_ready" | "pty_restart" => {
+                if let Some(v) = &self.tabs[ti].panes[pi].view {
+                    let _ = v.evaluate_script(&format!("window.__brust_theme && __brust_theme('{}')", self.effective_theme()));
+                }
                 let restart = m["t"] == "pty_restart";
                 let p = &mut self.tabs[ti].panes[pi];
                 if let (Some(pty), false) = (&p.pty, restart) {
@@ -2597,6 +2807,7 @@ fn main() {
                     app.relayout();
                     app.push_state();
                 }
+                WindowEvent::ThemeChanged(_) => app.apply_theme(),
                 WindowEvent::CloseRequested => {
                     if app.kiosk() {
                         app.toast("Kiosk mode: press Ctrl+Alt+Shift+K and enter the PIN to exit");

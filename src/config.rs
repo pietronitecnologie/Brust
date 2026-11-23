@@ -235,31 +235,20 @@ pub struct Config {
     /// Default printer for print commands (system default if empty).
     #[serde(default)]
     pub default_printer: Option<String>,
+    /// "system" (default), "dark" or "light".
+    #[serde(default = "system_theme")]
+    pub theme: String,
+}
+
+fn system_theme() -> String {
+    "system".into()
 }
 
 impl Default for Config {
     fn default() -> Self {
         Config {
-            apps: vec![
-                AppDef {
-                    id: "crm".into(),
-                    name: "CRM".into(),
-                    url: "http://localhost:3000".into(),
-                    icon: Some("📦".into()),
-                    external_links_in_browser: true,
-                    permissions: vec!["messaging".into(), "clipboard".into(), "open".into(), "notes".into()],
-                    ..Default::default()
-                },
-                AppDef {
-                    id: "erp".into(),
-                    name: "ERP".into(),
-                    url: "http://localhost:8080".into(),
-                    icon: Some("📐".into()),
-                    external_links_in_browser: true,
-                    permissions: vec!["messaging".into(), "clipboard".into(), "open".into(), "notes".into()],
-                    ..Default::default()
-                },
-            ],
+            // No apps at first start: they are added from Settings → Apps.
+            apps: vec![],
             shells: default_shells(),
             bridge: BridgeConfig::default(),
             devtools: cfg!(debug_assertions),
@@ -270,6 +259,7 @@ impl Default for Config {
             update: None,
             register_protocol: true,
             default_printer: None,
+            theme: system_theme(),
         }
     }
 }
@@ -473,6 +463,119 @@ pub fn default_notes_dir(paths: &Paths) -> PathBuf {
         .unwrap_or_else(|| paths.data_dir.join("notes"))
 }
 
+/// Capabilities an app can be granted (see README).
+pub const PERMISSIONS: [&str; 8] = ["messaging", "notes", "clipboard", "open", "print", "exec", "fs", "serial"];
+
+fn slug(s: &str) -> String {
+    let mut out = String::new();
+    for c in s.trim().to_lowercase().chars() {
+        if c.is_ascii_alphanumeric() {
+            out.push(c);
+        } else if !out.ends_with('-') && !out.is_empty() {
+            out.push('-');
+        }
+    }
+    out.trim_end_matches('-').chars().take(40).collect()
+}
+
+fn clean_list(v: &mut Vec<String>) {
+    for s in v.iter_mut() {
+        *s = s.trim().to_string();
+    }
+    v.retain(|s| !s.is_empty());
+    v.dedup();
+}
+
+/// Checks and normalizes an app edited in the UI. `original` is the id before editing.
+pub fn validate_app(a: &mut AppDef, existing: &[AppDef], original: Option<&str>) -> Result<(), String> {
+    a.name = a.name.trim().to_string();
+    if a.name.is_empty() {
+        return Err("The name is required".into());
+    }
+    a.id = if a.id.trim().is_empty() { slug(&a.name) } else { slug(&a.id) };
+    if a.id.is_empty() {
+        return Err("The ID must contain letters or digits".into());
+    }
+    if existing.iter().any(|x| x.id == a.id && Some(x.id.as_str()) != original) {
+        return Err(format!("Another app already uses the ID \"{}\"", a.id));
+    }
+    a.url = a.url.trim().to_string();
+    if !(a.url.starts_with("http://") || a.url.starts_with("https://")) || origin_of(&a.url).is_none() {
+        return Err("The address must start with http:// or https://".into());
+    }
+    clean_list(&mut a.allowed_origins);
+    if let Some(bad) = a.allowed_origins.iter().find(|o| origin_of(o).is_none()) {
+        return Err(format!("Not a valid address: {bad}"));
+    }
+    a.permissions.retain(|p| PERMISSIONS.contains(&p.as_str()));
+    a.permissions.dedup();
+    clean_list(&mut a.exec_allow);
+    clean_list(&mut a.fs_roots);
+    a.icon = a.icon.take().map(|i| i.trim().chars().take(4).collect::<String>()).filter(|i| !i.is_empty());
+    a.user_agent = a.user_agent.take().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    a.inject_script = a.inject_script.take().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    if let Some(z) = a.zoom {
+        a.zoom = (z.is_finite() && (z - 1.0).abs() > f64::EPSILON).then(|| z.clamp(0.25, 5.0));
+    }
+    a.web_permissions.retain(|_, v| v == "allow" || v == "deny");
+    Ok(())
+}
+
+/// Removes empty and default-valued fields so config.json stays readable.
+fn tidy_app(a: &AppDef) -> serde_json::Value {
+    let mut v = serde_json::to_value(a).unwrap_or_default();
+    if let Some(o) = v.as_object_mut() {
+        o.retain(|k, val| match val {
+            serde_json::Value::Null => false,
+            serde_json::Value::Array(x) => !x.is_empty(),
+            serde_json::Value::Object(x) => !x.is_empty(),
+            serde_json::Value::Bool(b) => *b || k == "external_links_in_browser" || k == "isolated",
+            _ => true,
+        });
+    }
+    v
+}
+
+/// Writes the app list into config.json, leaving every other setting of the file untouched.
+pub fn save_apps(paths: &Paths, apps: &[AppDef]) -> Result<(), String> {
+    save_config_key(paths, "apps", serde_json::Value::Array(apps.iter().map(tidy_app).collect()))
+}
+
+/// Sets one top-level key of config.json, leaving every other setting of the file untouched.
+pub fn save_config_key(paths: &Paths, key: &str, value: serde_json::Value) -> Result<(), String> {
+    let path = paths.config();
+    let mut v: serde_json::Value = match fs::read_to_string(&path) {
+        Ok(text) => serde_json::from_str(&text).map_err(|e| format!("config.json has an error, fix it first: {e}"))?,
+        Err(_) => serde_json::to_value(Config::default()).unwrap_or_default(),
+    };
+    let obj = v.as_object_mut().ok_or("config.json is not a JSON object")?;
+    obj.insert(key.into(), value);
+    let text = serde_json::to_string_pretty(&v).map_err(|e| e.to_string())?;
+    let tmp = path.with_extension("tmp");
+    fs::write(&tmp, text).map_err(|e| format!("{}: {e}", path.display()))?;
+    fs::rename(&tmp, &path).map_err(|e| format!("{}: {e}", path.display()))
+}
+
+/// Checks and normalizes privacy settings edited in the UI.
+pub fn validate_privacy(p: &mut PrivacyConfig) -> Result<(), String> {
+    clean_list(&mut p.blocklists);
+    clean_list(&mut p.block_domains);
+    clean_list(&mut p.allow_domains);
+    for d in p.block_domains.iter_mut().chain(p.allow_domains.iter_mut()) {
+        *d = d.trim_start_matches("https://").trim_start_matches("http://").trim_end_matches('/').to_ascii_lowercase();
+    }
+    if let Some(bad) = p.block_domains.iter().chain(p.allow_domains.iter()).find(|d| d.contains(['/', ' ', ':'])) {
+        return Err(format!("Not a domain name: {bad}"));
+    }
+    if let Some(missing) = p.blocklists.iter().find(|f| !Path::new(f).is_file()) {
+        return Err(format!("Block list file not found: {missing}"));
+    }
+    if p.lock_after_minutes > 1440 {
+        return Err("Auto-lock: at most 1440 minutes".into());
+    }
+    Ok(())
+}
+
 /// A saved tileset that can be reopened from the palette, the command line or kiosk mode.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Template {
@@ -500,6 +603,25 @@ pub fn origin_of(url: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn app_validation() {
+        let existing = vec![AppDef { id: "crm".into(), name: "CRM".into(), url: "https://crm.example.com".into(), ..Default::default() }];
+        let mut a = AppDef { name: " Field Service ".into(), url: "https://fs.example.com/app".into(), ..Default::default() };
+        a.permissions = vec!["notes".into(), "bogus".into()];
+        a.allowed_origins = vec![" https://login.example.com ".into(), "".into()];
+        validate_app(&mut a, &existing, None).unwrap();
+        assert_eq!(a.id, "field-service");
+        assert_eq!(a.permissions, vec!["notes"]);
+        assert_eq!(a.allowed_origins, vec!["https://login.example.com"]);
+        let mut dup = AppDef { id: "CRM".into(), name: "x".into(), url: "https://x.example.com".into(), ..Default::default() };
+        assert!(validate_app(&mut dup, &existing, None).is_err());
+        assert!(validate_app(&mut dup.clone(), &existing, Some("crm")).is_ok());
+        let mut bad = AppDef { name: "x".into(), url: "ftp://x".into(), ..Default::default() };
+        assert!(validate_app(&mut bad, &existing, None).is_err());
+        let t = tidy_app(&a);
+        assert!(t.get("fs_roots").is_none() && t.get("clear_on_exit").is_none() && t["external_links_in_browser"] == false);
+    }
 
     #[test]
     fn origins() {

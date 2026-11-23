@@ -10,7 +10,21 @@
   --bar-h: 38px; --head-h: 26px;
   font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
   color-scheme: dark;
+  --hover: #22262d; --btn-hover: #2a2f37; --btn-hover2: #343a44; --hb-hover: #343b47; --x-hover: #333a45;
+  --input: #0f1115; --code: #101216; --pb: #111317; --sel: #263453; --sel-text: #cfdcff; --card-hover: #232a38; --ci: #2a303a;
+  --err-bg: #3a1f25; --err-line: #6b2c38; --err-text: #ffc2cc; --danger-bg: #4a2730; --danger-bg2: #5c2f3a; --danger-text: #ffb3bf;
+  --scrim: rgba(8, 9, 12, .72); --lock1: #1d2230; --lock2: #0c0d11; --row-line: #1c1f25;
 }
+:root[data-theme="light"] {
+  --bg: #eceff4; --bar: #e2e6ed; --panel: #ffffff; --panel2: #f3f5f9; --line: #d2d7e0;
+  --text: #1c2230; --muted: #5d6677; --accent: #3a6ae6; --accent2: #2d5bd3; --danger: #d43c55;
+  color-scheme: light;
+  --hover: #d8dde6; --btn-hover: #d3d9e3; --btn-hover2: #c7cedb; --hb-hover: #dfe3ea; --x-hover: #cbd2dd;
+  --input: #ffffff; --code: #f1f3f7; --pb: #f7f8fb; --sel: #d9e4ff; --sel-text: #1d3a8f; --card-hover: #eef3ff; --ci: #e6eaf1;
+  --err-bg: #fde8eb; --err-line: #efb1bb; --err-text: #8d1b2c; --danger-bg: #fde4e8; --danger-bg2: #f8ccd4; --danger-text: #a3172c;
+  --scrim: rgba(28, 34, 48, .35); --lock1: #f4f6fb; --lock2: #d6dbe5; --row-line: #e6e9ef;
+}
+
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); overflow: hidden; font-size: 13px; user-select: none; }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
@@ -21,7 +35,7 @@ input { font: inherit; }
 #tabs { display: flex; align-items: flex-end; gap: 2px; padding: 0 4px 0 6px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; min-width: 0; }
 #tabs::-webkit-scrollbar { display: none; }
 .tab { display: flex; align-items: center; gap: 7px; height: 31px; padding: 0 6px 0 11px; min-width: 120px; max-width: 230px; border-radius: 8px 8px 0 0; color: var(--muted); background: transparent; cursor: default; position: relative; flex-shrink: 0; }
-.tab:hover { background: #22262d; color: var(--text); }
+.tab:hover { background: var(--hover); color: var(--text); }
 .tab.active { background: var(--bg); color: var(--text); }
 .tab.active::after { content: ""; position: absolute; left: 10px; right: 10px; top: 0; height: 2px; border-radius: 2px; background: var(--accent); }
 .tab .ico { font-size: 13px; width: 16px; text-align: center; flex-shrink: 0; }
@@ -29,17 +43,17 @@ input { font: inherit; }
 .tab .lay { opacity: .55; display: flex; }
 .tab .x { width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; opacity: 0; color: var(--muted); }
 .tab:hover .x, .tab.active .x { opacity: 1; }
-.tab .x:hover { background: #333a45; color: var(--text); }
-.tab input { width: 100%; background: #101216; border: 1px solid var(--accent); color: var(--text); border-radius: 4px; padding: 1px 4px; outline: none; }
+.tab .x:hover { background: var(--x-hover); color: var(--text); }
+.tab input { width: 100%; background: var(--code); border: 1px solid var(--accent); color: var(--text); border-radius: 4px; padding: 1px 4px; outline: none; }
 .tab.drop-before { box-shadow: inset 2px 0 0 var(--accent); }
 #newtab { align-self: center; width: 28px; height: 28px; border-radius: 7px; font-size: 18px; color: var(--muted); flex-shrink: 0; margin-left: 2px; }
-#newtab:hover { background: #2a2f37; color: var(--text); }
+#newtab:hover { background: var(--btn-hover); color: var(--text); }
 #spacer { flex: 1; }
 #tools { display: flex; align-items: center; gap: 2px; padding: 0 8px; }
 .sep { width: 1px; height: 20px; background: var(--line); margin: 0 6px; }
 .tb { height: 28px; min-width: 30px; padding: 0 6px; border-radius: 7px; display: grid; place-items: center; color: var(--muted); }
-.tb:hover { background: #2a2f37; color: var(--text); }
-.tb.on { background: #263453; color: #cfdcff; }
+.tb:hover { background: var(--btn-hover); color: var(--text); }
+.tb.on { background: var(--sel); color: var(--sel-text); }
 .tb svg { display: block; }
 
 /* Tile area */
@@ -51,10 +65,10 @@ input { font: inherit; }
 .ph .ttl { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .ph .ttl small { color: var(--muted); margin-left: 6px; }
 .ph .hb { width: 22px; height: 20px; border-radius: 5px; display: grid; place-items: center; color: var(--muted); }
-.ph .hb:hover { background: #343b47; color: var(--text); }
-.ph .hb.close:hover { background: #4a2730; color: #ffb3bf; }
-.pane.drop .ph { background: #263453; }
-.pb { position: absolute; left: 0; right: 0; bottom: 0; top: var(--head-h); background: #111317; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 7px 7px; overflow: auto; }
+.ph .hb:hover { background: var(--hb-hover); color: var(--text); }
+.ph .hb.close:hover { background: var(--danger-bg); color: var(--danger-text); }
+.pane.drop .ph { background: var(--sel); }
+.pb { position: absolute; left: 0; right: 0; bottom: 0; top: var(--head-h); background: var(--pb); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 7px 7px; overflow: auto; }
 .pb.live { background: #fff0; }
 
 /* Content picker */
@@ -63,18 +77,18 @@ input { font: inherit; }
 .picker h3:first-child { margin-top: 0; }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
 .card { text-align: left; padding: 11px 12px; border-radius: 9px; background: var(--panel); border: 1px solid var(--line); display: flex; gap: 10px; align-items: center; min-width: 0; }
-.card:hover { border-color: var(--accent); background: #232a38; }
-.card .ci { width: 30px; height: 30px; border-radius: 8px; background: #2a303a; display: grid; place-items: center; font-size: 16px; flex-shrink: 0; }
+.card:hover { border-color: var(--accent); background: var(--card-hover); }
+.card .ci { width: 30px; height: 30px; border-radius: 8px; background: var(--ci); display: grid; place-items: center; font-size: 16px; flex-shrink: 0; }
 .card .ct { min-width: 0; }
 .card .cn { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card .cu { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .urlrow { display: flex; gap: 8px; }
-.urlrow input { flex: 1; min-width: 0; background: #0f1115; border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 8px 10px; outline: none; user-select: text; }
+.urlrow input { flex: 1; min-width: 0; background: var(--input); border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 8px 10px; outline: none; user-select: text; }
 .urlrow input:focus { border-color: var(--accent); }
 .btn { padding: 7px 14px; border-radius: 8px; background: var(--accent2); color: white; font-weight: 600; }
 .btn:hover { background: var(--accent); }
-.btn.ghost { background: #2a2f37; color: var(--text); font-weight: 500; }
-.btn.ghost:hover { background: #343a44; }
+.btn.ghost { background: var(--btn-hover); color: var(--text); font-weight: 500; }
+.btn.ghost:hover { background: var(--btn-hover2); }
 .empty-hint { color: var(--muted); font-size: 12px; }
 
 /* Splitters */
@@ -90,7 +104,7 @@ body.dragging-x, body.dragging-x * { cursor: col-resize !important; }
 body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
 
 /* Settings */
-#overlay { position: absolute; inset: 0; background: rgba(8, 9, 12, .72); display: none; z-index: 50; }
+#overlay { position: absolute; inset: 0; background: var(--scrim); display: none; z-index: 50; }
 #overlay.show { display: grid; place-items: center; }
 .dlg { width: min(760px, 92vw); max-height: 86vh; overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; box-shadow: 0 20px 60px rgba(0,0,0,.5); user-select: text; }
 .dlg h2 { margin: 0 0 4px; font-size: 17px; }
@@ -99,29 +113,29 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
 .dlg table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .dlg td { padding: 6px 8px; border-top: 1px solid var(--line); vertical-align: top; }
 .dlg td:first-child { white-space: nowrap; }
-.dlg code { background: #14161a; padding: 1px 5px; border-radius: 4px; font-family: Consolas, monospace; font-size: 12px; }
-.err { background: #3a1f25; border: 1px solid #6b2c38; color: #ffc2cc; padding: 8px 10px; border-radius: 8px; margin: 8px 0; }
+.dlg code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-family: Consolas, monospace; font-size: 12px; }
+.err { background: var(--err-bg); border: 1px solid var(--err-line); color: var(--err-text); padding: 8px 10px; border-radius: 8px; margin: 8px 0; }
 .kbd { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 12px; color: var(--muted); }
 .kbd b { color: var(--text); font-weight: 500; }
 .badge { min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 10.5px; font-weight: 700; display: inline-grid; place-items: center; flex-shrink: 0; }
 .kiosk .tab .x, .kiosk #newtab, .kiosk #layouts, .kiosk #tools .sep { display: none !important; }
 .priv { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; margin-top: 8px; user-select: none; }
 /* Modal (confirmation, lock screen, PIN) */
-#modal { position: absolute; inset: 0; z-index: 80; display: none; place-items: center; background: rgba(8, 9, 12, .78); }
+#modal { position: absolute; inset: 0; z-index: 80; display: none; place-items: center; background: var(--scrim); }
 #modal.show { display: grid; }
-#modal.lock { background: radial-gradient(circle at 50% 35%, #1d2230, #0c0d11 70%); }
+#modal.lock { background: radial-gradient(circle at 50% 35%, var(--lock1), var(--lock2) 70%); }
 .mbox { width: min(520px, 92vw); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px 24px; box-shadow: 0 24px 70px rgba(0,0,0,.55); user-select: text; }
 .mbox h3 { margin: 0 0 10px; font-size: 16px; }
 .mbox p { margin: 6px 0; color: var(--muted); line-height: 1.45; }
-.mbox pre { background: #101216; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; white-space: pre-wrap; word-break: break-all; font-family: Consolas, monospace; font-size: 12px; max-height: 180px; overflow: auto; color: var(--text); }
+.mbox pre { background: var(--code); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; white-space: pre-wrap; word-break: break-all; font-family: Consolas, monospace; font-size: 12px; max-height: 180px; overflow: auto; color: var(--text); }
 .mbox .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
-.btn.danger { background: #4a2730; color: #ffc2cc; }
-.btn.danger:hover { background: #5c2f3a; }
-.pin { width: 100%; background: #0f1115; border: 1px solid var(--line); border-radius: 9px; color: var(--text); padding: 10px 12px; font-size: 18px; letter-spacing: .3em; text-align: center; outline: none; margin-top: 10px; }
+.btn.danger { background: var(--danger-bg); color: var(--err-text); }
+.btn.danger:hover { background: var(--danger-bg2); }
+.pin { width: 100%; background: var(--input); border: 1px solid var(--line); border-radius: 9px; color: var(--text); padding: 10px 12px; font-size: 18px; letter-spacing: .3em; text-align: center; outline: none; margin-top: 10px; }
 .pin:focus { border-color: var(--accent); }
-.pinerr { color: #ff9aaa; min-height: 18px; margin-top: 6px; font-size: 12px; text-align: center; }
+.pinerr { color: var(--danger-text); min-height: 18px; margin-top: 6px; font-size: 12px; text-align: center; }
 /* Command palette */
-#palette { position: absolute; inset: 0; z-index: 70; display: none; justify-content: center; align-items: flex-start; padding-top: 12vh; background: rgba(8, 9, 12, .55); }
+#palette { position: absolute; inset: 0; z-index: 70; display: none; justify-content: center; align-items: flex-start; padding-top: 12vh; background: var(--scrim); }
 #palette.show { display: flex; }
 .pal { width: min(620px, 92vw); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 24px 70px rgba(0,0,0,.55); overflow: hidden; }
 #palq { width: 100%; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--text); padding: 14px 16px; font-size: 15px; outline: none; }
@@ -130,15 +144,29 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
 .pi .pic { width: 22px; text-align: center; }
 .pi .pil { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pi .pih { color: var(--muted); font-size: 11px; }
-.pi.sel { background: #263453; }
+.pi.sel { background: var(--sel); }
 .dlg .grid2 { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; }
-.dlg input.f { background: #0f1115; border: 1px solid var(--line); border-radius: 7px; color: var(--text); padding: 6px 9px; outline: none; }
+.dlg input.f { background: var(--input); border: 1px solid var(--line); border-radius: 7px; color: var(--text); padding: 6px 9px; outline: none; }
 .dlg input.f:focus { border-color: var(--accent); }
 .dlg .muted { color: var(--muted); font-size: 12px; }
 .dlg .mini { padding: 3px 9px; font-size: 12px; }
-#auditbox { max-height: 260px; overflow: auto; font-family: Consolas, monospace; font-size: 11.5px; background: #101216; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; margin-top: 8px; display: none; }
-#auditbox div { padding: 2px 0; border-bottom: 1px solid #1c1f25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#toast { position: absolute; left: 50%; top: 4px; height: 30px; line-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transform: translateX(-50%); background: #263453; border: 1px solid #3d6ae0; color: #dfe7ff; padding: 7px 14px; border-radius: 8px; display: none; z-index: 60; max-width: 80vw; }
+.form { display: grid; grid-template-columns: 150px 1fr; gap: 9px 12px; align-items: center; }
+.form label.l { color: var(--muted); font-size: 12px; }
+.form input.f, .form select, .form textarea { width: 100%; background: var(--input); border: 1px solid var(--line); border-radius: 7px; color: var(--text); padding: 6px 9px; outline: none; font: inherit; }
+.form textarea { min-height: 54px; resize: vertical; font-family: Consolas, monospace; font-size: 12px; }
+.form input.f:focus, .form select:focus, .form textarea:focus { border-color: var(--accent); }
+.form .full { grid-column: 1 / -1; }
+.form .hint { grid-column: 2; color: var(--muted); font-size: 11.5px; margin-top: -4px; }
+.checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px 14px; }
+.checks label { display: flex; gap: 7px; align-items: flex-start; font-size: 12.5px; }
+.checks label small { display: block; color: var(--muted); font-size: 11px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { padding: 5px 12px; font-size: 12px; color: var(--muted); }
+.seg button.on { background: var(--sel); color: var(--sel-text); }
+.formerr { color: var(--danger-text); min-height: 16px; font-size: 12px; margin-top: 8px; }
+#auditbox { max-height: 260px; overflow: auto; font-family: Consolas, monospace; font-size: 11.5px; background: var(--code); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; margin-top: 8px; display: none; }
+#auditbox div { padding: 2px 0; border-bottom: 1px solid var(--row-line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#toast { position: absolute; left: 50%; top: 4px; height: 30px; line-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transform: translateX(-50%); background: var(--sel); border: 1px solid var(--accent2); color: var(--sel-text); padding: 7px 14px; border-radius: 8px; display: none; z-index: 60; max-width: 80vw; }
 </style>
 </head>
 <body>
@@ -268,9 +296,9 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
     if (S.apps.length) {
       h += "<h3>Apps</h3><div class='cards'>" + S.apps.map(function (a) {
         return '<button class="card" data-app="' + esc(a.id) + '"><span class="ci">' + esc(a.icon || "▣") + '</span><span class="ct"><div class="cn">' + esc(a.name) + '</div><div class="cu">' + esc(a.url) + "</div></span></button>";
-      }).join("") + "</div>";
+      }).join("") + (S.kiosk || S.appsManaged ? "" : "<button class='card' data-addapp='1'><span class='ci'>＋</span><span class='ct'><div class='cn'>Add an app</div><div class='cu'>Any web address</div></span></button>") + "</div>";
     } else {
-      h += "<h3>Apps</h3><div class='empty-hint'>No apps configured: add them in config.json (⚙ Settings).</div>";
+      h += "<h3>Apps</h3><div class='cards'>" + (S.kiosk || S.appsManaged ? "<div class='empty-hint'>No apps configured.</div>" : "<button class='card' data-addapp='1'><span class='ci'>＋</span><span class='ct'><div class='cn'>Add an app</div><div class='cu'>Any web address</div></span></button>") + "</div>";
     }
     h += "<h3>Terminals</h3><div class='cards'>" + S.shells.map(function (s) {
       return '<button class="card" data-shell="' + esc(s.id) + '"><span class="ci" style="font-family:Consolas,monospace;font-size:12px;font-weight:700">›_</span><span class="ct"><div class="cn">' + esc(s.name) + '</div><div class="cu">' + esc(s.program) + "</div></span></button>";
@@ -285,6 +313,7 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
   function bindPicker(el, p) {
     el.querySelectorAll("[data-app]").forEach(function (b) { b.onclick = function () { send("set_content", { pane: p.id, content: { kind: "app", app: b.dataset.app } }); }; });
     el.querySelectorAll("[data-shell]").forEach(function (b) { b.onclick = function () { send("set_content", { pane: p.id, content: { kind: "terminal", shell: b.dataset.shell } }); }; });
+    el.querySelectorAll("[data-addapp]").forEach(function (b) { b.onclick = function () { openAppEditor(null); }; });
     el.querySelectorAll("[data-notes]").forEach(function (b) { b.onclick = function () { send("set_content", { pane: p.id, content: { kind: "notes", notebook: "Inbox" } }); }; });
     var inp = el.querySelector(".url");
     var go = function () {
@@ -417,15 +446,16 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
   }
 
   /* ---------- Settings ---------- */
-  function openSettings() { if (S.kiosk) return; closePalette(true); send("overlay", { on: true }); $("overlay").classList.add("show"); renderSettings(true); }
-  function closeSettings() { $("overlay").classList.remove("show"); send("overlay", { on: false }); }
+  function openSettings() { if (S.kiosk) return; closePalette(true); send("overlay", { on: true }); $("overlay").classList.add("show"); renderSettings(true); $("dlg").scrollTop = 0; }
+  function closeSettings() { appEdit = null; $("overlay").classList.remove("show"); send("overlay", { on: false }); }
   var auditShown = false;
   function sec(title) { return "<h4>" + esc(title) + "</h4>"; }
   var settingsSig = "";
   function renderSettings(force) {
     if (!$("overlay").classList.contains("show")) { settingsSig = ""; return; }
     // Rebuild only when something shown here changed (keeps typing and messages intact).
-    var sig = JSON.stringify([S.version, S.configError, S.configPath, S.apps, S.privacy, S.pinSet, S.templates, S.notesDir, S.bridge, S.remote, S.update,
+    if (appEdit) { if (force) renderAppEditor(); return; }
+    var sig = JSON.stringify([S.version, S.configError, S.configPath, S.apps, S.privacy, S.privacyConfig, S.privacyManaged, S.theme, S.appsManaged, S.pinSet, S.templates, S.notesDir, S.bridge, S.remote, S.update,
       S.tabs.filter(function (t) { return t.floating; }).map(function (t) { return t.title; }), auditShown]);
     if (sig === settingsSig && !force) return;
     settingsSig = sig;
@@ -439,21 +469,38 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
     h += "<div class='row'><button class='btn' data-c='open_config'>Edit config.json</button><button class='btn ghost' data-c='reload_config'>Reload configuration</button><button class='btn ghost' data-c='open_config_dir'>Open folder</button></div>";
     h += "<div class='muted' style='margin-top:8px'>" + esc(S.configPath) + "</div>";
 
-    h += sec("Apps") + "<table>" + (S.apps.length ? S.apps.map(function (a) {
+    h += sec("Appearance") + "<div class='seg'>" + [["system", "System"], ["dark", "Dark"], ["light", "Light"]].map(function (t) {
+      return "<button data-theme='" + t[0] + "' class='" + (S.theme === t[0] ? "on" : "") + "'>" + t[1] + "</button>"; }).join("") + "</div>";
+
+    h += sec("Apps") + (S.appsManaged ? "<div class='muted'>Managed by the central configuration.</div>" : "<div class='row' style='margin-top:0'><button class='btn mini' id='appadd'>＋ Add app</button></div>") +
+      "<table>" + (S.apps.length ? S.apps.map(function (a) {
       var flags = [a.isolated ? "own profile" : "shared profile"];
       if (a.incognito) flags.push("private");
       if (a.clearOnExit) flags.push("cleared on exit");
       return "<tr><td>" + esc(a.icon || "") + " <b>" + esc(a.name) + "</b> <code>" + esc(a.id) + "</code></td><td>" + esc(a.url) +
-        "<br><span class='muted'>permissions: " + esc(a.permissions.join(", ") || "none") + " · " + esc(flags.join(", ")) + "</span></td></tr>";
-    }).join("") : "<tr><td>None</td></tr>") + "</table>";
+        "<br><span class='muted'>permissions: " + esc(a.permissions.join(", ") || "none") + " · " + esc(flags.join(", ")) + "</span></td>" +
+        (S.appsManaged ? "" : "<td style='text-align:right;white-space:nowrap'><button class='btn ghost mini' data-appedit='" + esc(a.id) + "'>Edit</button></td>") + "</tr>";
+    }).join("") : "<tr><td class='muted'>No apps yet.</td></tr>") + "</table>";
 
     h += sec("Privacy");
-    h += "<div class='grid2'>" +
-      "<span>Tracker and ad blocking</span><span class='muted'>" + (pv.blockTrackers ? "on · " + pv.blocked + " requests blocked" : "off (privacy.block_trackers)") + "</span>" +
-      "<span>Ask before sensitive commands</span><span class='muted'>" + (pv.confirmSensitive ? "on" : "off") + "</span>" +
-      "<span>Activity log</span><span>" + (pv.auditLog ? "<button class='btn ghost mini' id='auditbtn'>" + (auditShown ? "Hide" : "Show") + "</button> <button class='btn ghost mini' data-c='open_audit'>Open file</button>" : "<span class='muted'>off</span>") + "</span>" +
-      "<span>Auto-lock</span><span class='muted'>" + (pv.lockAfter ? "after " + pv.lockAfter + " min idle" : "off (privacy.lock_after_minutes)") + "</span>" +
-      "</div><div id='auditbox'></div>";
+    var pc = S.privacyConfig;
+    if (S.privacyManaged) {
+      h += "<div class='muted'>Managed by the central configuration.</div>";
+    } else {
+      h += "<div class='form'>" +
+        "<div class='full checks'>" +
+          "<label><input type='checkbox' id='pv-block'" + (pc.block_trackers ? " checked" : "") + "><span>Block trackers and ads<small>" + (pv.blockTrackers ? pv.blocked + " requests blocked so far" : "For all apps and web pages (each app can override it)") + "</small></span></label>" +
+          "<label><input type='checkbox' id='pv-confirm'" + (pc.confirm_sensitive ? " checked" : "") + "><span>Ask before sensitive commands<small>Running programs, writing files, serial ports, printing files</small></span></label>" +
+          "<label><input type='checkbox' id='pv-audit'" + (pc.audit_log ? " checked" : "") + "><span>Activity log<small>Records what apps do through the bridge</small></span></label>" +
+        "</div>" +
+        "<label class='l' for='pv-lock'>Auto-lock after</label><span><input class='f' id='pv-lock' type='number' min='0' max='1440' style='width:90px' value='" + (pc.lock_after_minutes || 0) + "'> <span class='muted'>minutes idle (0 = never, needs a PIN)</span></span>" +
+        "<label class='l' for='pv-bd'>Also block</label><textarea id='pv-bd' placeholder='one domain per line, e.g. ads.example.com'>" + esc(pc.block_domains.join("\n")) + "</textarea>" +
+        "<label class='l' for='pv-ad'>Never block</label><textarea id='pv-ad' placeholder='one domain per line'>" + esc(pc.allow_domains.join("\n")) + "</textarea>" +
+        "<label class='l' for='pv-bl'>Block list files</label><textarea id='pv-bl' placeholder='full path of a hosts file or domain list, one per line'>" + esc(pc.blocklists.join("\n")) + "</textarea>" +
+        "<span></span><span class='muted'>Switching tracker blocking on or off for an app moves it to a separate browser profile: you may need to sign in again.</span>" +
+        "</div><div class='row' style='align-items:center'><span class='formerr' id='pverr' style='flex:1;margin:0'></span><button class='btn mini' id='pvsave'>Save privacy settings</button></div>";
+    }
+    h += "<div class='row' style='align-items:center'>" + (pv.auditLog ? "<b style='font-size:12px'>Activity log</b> <button class='btn ghost mini' id='auditbtn'>" + (auditShown ? "Hide" : "Show") + "</button> <button class='btn ghost mini' data-c='open_audit'>Open file</button>" : "") + "</div><div id='auditbox'></div>";
     if (pv.grants.length) {
       h += "<div style='margin-top:10px'><b style='font-size:12px'>Always allowed</b> <button class='btn ghost mini' data-grant='*'>Revoke all</button></div><div class='grid2' style='margin-top:6px'>" +
         pv.grants.map(function (g) { var p = g.split("|"); return "<span><code>" + esc(p[0]) + "</code> " + esc(p[1]) + (p[2] ? " <code>" + esc(p[2]) + "</code>" : "") + "</span><button class='btn ghost mini' data-grant='" + esc(g) + "'>Revoke</button>"; }).join("") + "</div>";
@@ -496,11 +543,106 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
     $("dlg").querySelectorAll("[data-reattach]").forEach(function (x) { x.onclick = function () { closeSettings(); send("reattach", { index: +x.dataset.reattach }); }; });
     var ab = $("auditbtn"); if (ab) ab.onclick = function () { auditShown = !auditShown; if (auditShown) send("audit_tail"); renderSettings(); };
     if (auditShown && lastAudit) showAudit(lastAudit);
+    $("dlg").querySelectorAll("[data-theme]").forEach(function (x) { x.onclick = function () { send("set_theme", { theme: x.dataset.theme }); }; });
+    var aa = $("appadd"); if (aa) aa.onclick = function () { openAppEditor(null); };
+    $("dlg").querySelectorAll("[data-appedit]").forEach(function (x) { x.onclick = function () { openAppEditor(x.dataset.appedit); }; });
+    var pvs = $("pvsave"); if (pvs) pvs.onclick = function () {
+      var lines = function (id) { return $(id).value.split(/\r?\n/).map(function (x) { return x.trim(); }).filter(Boolean); };
+      $("pverr").textContent = "";
+      send("privacy_save", { privacy: {
+        block_trackers: $("pv-block").checked, confirm_sensitive: $("pv-confirm").checked, audit_log: $("pv-audit").checked,
+        lock_after_minutes: Math.max(0, parseInt($("pv-lock").value, 10) || 0),
+        block_domains: lines("pv-bd"), allow_domains: lines("pv-ad"), blocklists: lines("pv-bl")
+      } });
+    };
     $("tplsave").onclick = function () { var n = $("tplname").value.trim(); if (n) { send("save_template", { name: n }); $("tplname").value = ""; } };
     $("pinsave").onclick = function () { $("seterr").textContent = ""; send("set_pin", { old: $("pinold") ? $("pinold").value : "", pin: $("pinnew").value }); if ($("pinold")) $("pinold").value = ""; $("pinnew").value = ""; };
     var pc = $("pinclear"); if (pc) pc.onclick = function () { $("seterr").textContent = ""; send("clear_pin", { old: $("pinold").value }); $("pinold").value = ""; };
     $("closeset").onclick = closeSettings;
   }
+  /* ---------- App editor ---------- */
+  var appEdit = null; // { original: id|null, draft: AppDef }
+  var WEBPERMS = [["camera", "Camera"], ["microphone", "Microphone"], ["geolocation", "Location"], ["display_capture", "Screen capture"], ["notifications", "Notifications"], ["clipboard_read", "Read clipboard"]];
+  var PERM_INFO = {
+    messaging: "Talk to other apps and to local software", notes: "Add and read notes", clipboard: "Read and write the clipboard",
+    open: "Open files and links with the default program", print: "Print pages and files", exec: "Run programs (only those listed below)",
+    fs: "Read and write files (only in the folders below)", serial: "Use serial ports (scales, scanners, PLCs…)"
+  };
+  function openAppEditor(id) {
+    var src = id ? S.appDefs.filter(function (a) { return a.id === id; })[0] : null;
+    var d = src ? JSON.parse(JSON.stringify(src)) : { id: "", name: "", url: "https://", icon: "", allowed_origins: [], external_links_in_browser: true,
+      permissions: ["messaging", "notes"], exec_allow: [], fs_roots: [], clear_on_exit: false, incognito: false, web_permissions: {} };
+    appEdit = { original: src ? src.id : null, draft: d, confirmDelete: false };
+    if (!$("overlay").classList.contains("show")) { closePalette(true); send("overlay", { on: true }); $("overlay").classList.add("show"); }
+    renderAppEditor();
+  }
+  function tri(v) { return v === true ? "on" : v === false ? "off" : ""; }
+  function renderAppEditor() {
+    var d = appEdit.draft, isNew = !appEdit.original;
+    var sel = function (id, v, opts) { return "<select id='" + id + "'>" + opts.map(function (o) { return "<option value='" + o[0] + "'" + (o[0] === v ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + "</select>"; };
+    var ta = function (id, arr, ph) { return "<textarea id='" + id + "' placeholder='" + esc(ph) + "'>" + esc((arr || []).join("\n")) + "</textarea>"; };
+    var h = "<h2>" + (isNew ? "Add app" : "Edit " + esc(d.name)) + "</h2>";
+    h += "<div class='form' style='margin-top:14px'>" +
+      "<label class='l' for='ae-name'>Name</label><input class='f' id='ae-name' value='" + esc(d.name) + "' placeholder='e.g. Warehouse'>" +
+      "<label class='l' for='ae-url'>Address</label><input class='f' id='ae-url' value='" + esc(d.url) + "' placeholder='https://app.example.com' spellcheck='false'>" +
+      "<label class='l' for='ae-icon'>Icon</label><input class='f' id='ae-icon' value='" + esc(d.icon || "") + "' placeholder='an emoji, e.g. 📦' style='width:120px'>" +
+      "<label class='l' for='ae-id'>ID</label><input class='f' id='ae-id' value='" + esc(d.id) + "' placeholder='automatic from the name' spellcheck='false'>" +
+      "<span class='hint'>Used by other apps and local software to address this app (bridge, command line, links).</span>" +
+      "<label class='l' for='ae-origins'>Also part of the app</label>" + ta("ae-origins", d.allowed_origins, "other addresses of the app, one per line (e.g. the login page https://login.example.com)") +
+      "<span></span><label class='checks'><label><input type='checkbox' id='ae-ext'" + (d.external_links_in_browser !== false ? " checked" : "") + "><span>Open links to other sites in the system browser</span></label></label>" +
+      "</div>";
+    h += sec("Permissions") + "<div class='checks'>" + S.permissionNames.map(function (p) {
+      return "<label><input type='checkbox' data-perm='" + p + "'" + (d.permissions.indexOf(p) >= 0 ? " checked" : "") + "><span><b>" + p + "</b><small>" + esc(PERM_INFO[p] || "") + "</small></span></label>"; }).join("") + "</div>";
+    h += "<div class='form' style='margin-top:10px'>" +
+      "<label class='l' for='ae-exec'>Programs allowed</label>" + ta("ae-exec", d.exec_allow, "program names for 'exec', one per line (e.g. powershell, labelprinter.exe); * = any") +
+      "<label class='l' for='ae-fs'>Folders allowed</label>" + ta("ae-fs", d.fs_roots, "folders for 'fs' and printing files, one per line (e.g. C:\\Exchange); * = whole disk") +
+      "</div>";
+    h += sec("Privacy") + "<div class='checks'>" +
+      "<label><input type='checkbox' id='ae-isolated'" + (d.isolated !== false ? " checked" : "") + "><span>Own browser profile<small>Cookies and logins separate from the other apps</small></span></label>" +
+      "<label><input type='checkbox' id='ae-incognito'" + (d.incognito ? " checked" : "") + "><span>Private mode<small>Nothing stored on disk: sign in every time</small></span></label>" +
+      "<label><input type='checkbox' id='ae-clear'" + (d.clear_on_exit ? " checked" : "") + "><span>Clear data when Brust closes<small>Needs its own profile</small></span></label>" +
+      "</div><div class='form' style='margin-top:10px'>" +
+      "<label class='l' for='ae-block'>Block trackers</label>" + sel("ae-block", tri(d.block_trackers), [["", "As in Privacy settings"], ["on", "On"], ["off", "Off"]]) +
+      "<label class='l' for='ae-confirm'>Ask before sensitive commands</label>" + sel("ae-confirm", tri(d.confirm), [["", "As in Privacy settings"], ["on", "Always ask"], ["off", "Never ask"]]) +
+      WEBPERMS.map(function (w) {
+        var v = (d.web_permissions || {})[w[0]] || "";
+        var def = ["camera", "microphone", "geolocation", "display_capture"].indexOf(w[0]) >= 0 ? "Blocked (default)" : "Browser default";
+        return "<label class='l' for='wp-" + w[0] + "'>" + w[1] + "</label>" + sel("wp-" + w[0], v, [["", def], ["allow", "Allow"], ["deny", "Block"]]);
+      }).join("") + "</div>";
+    h += sec("Advanced") + "<div class='form'>" +
+      "<label class='l' for='ae-zoom'>Zoom</label><span><input class='f' id='ae-zoom' type='number' step='0.05' min='0.25' max='5' style='width:90px' value='" + (d.zoom || 1) + "'> <span class='muted'>1 = 100%</span></span>" +
+      "<label class='l' for='ae-ua'>User agent</label><input class='f' id='ae-ua' value='" + esc(d.user_agent || "") + "' placeholder='default'>" +
+      "<label class='l' for='ae-inject'>Script to inject</label><input class='f' id='ae-inject' value='" + esc(d.inject_script || "") + "' placeholder='full path of a .js file (adapter for apps you cannot change)'>" +
+      "</div>";
+    h += "<div class='formerr' id='apperr'></div><div class='row' style='justify-content:space-between'>" +
+      (isNew ? "<span></span>" : "<button class='btn danger' id='aedel'>" + (appEdit.confirmDelete ? "Click again to delete" : "Delete app") + "</button>") +
+      "<span style='display:flex;gap:8px'><button class='btn ghost' id='aecancel'>Cancel</button><button class='btn' id='aesave'>" + (isNew ? "Add app" : "Save") + "</button></span></div>";
+    $("dlg").innerHTML = h;
+    $("dlg").scrollTop = 0;
+    setTimeout(function () { $("ae-name").focus(); }, 20);
+    $("aecancel").onclick = function () { appEdit = null; renderSettings(true); };
+    var del = $("aedel"); if (del) del.onclick = function () {
+      if (!appEdit.confirmDelete) { appEdit.draft = collectApp(); appEdit.confirmDelete = true; renderAppEditor(); return; }
+      send("app_delete", { id: appEdit.original });
+    };
+    $("aesave").onclick = function () { $("apperr").textContent = ""; send("app_save", { original: appEdit.original, app: collectApp() }); };
+  }
+  function collectApp() {
+    var lines = function (id) { return $(id).value.split(/\r?\n/).map(function (x) { return x.trim(); }).filter(Boolean); };
+    var t = function (id) { var v = $(id).value; return v === "on" ? true : v === "off" ? false : null; };
+    var wp = {}; WEBPERMS.forEach(function (w) { var v = $("wp-" + w[0]).value; if (v) wp[w[0]] = v; });
+    var zoom = parseFloat($("ae-zoom").value);
+    return {
+      id: $("ae-id").value.trim(), name: $("ae-name").value.trim(), url: $("ae-url").value.trim(), icon: $("ae-icon").value.trim() || null,
+      allowed_origins: lines("ae-origins"), external_links_in_browser: $("ae-ext").checked,
+      permissions: Array.prototype.filter.call($("dlg").querySelectorAll("[data-perm]"), function (c) { return c.checked; }).map(function (c) { return c.dataset.perm; }),
+      exec_allow: lines("ae-exec"), fs_roots: lines("ae-fs"),
+      isolated: $("ae-isolated").checked, incognito: $("ae-incognito").checked, clear_on_exit: $("ae-clear").checked,
+      block_trackers: t("ae-block"), confirm: t("ae-confirm"), web_permissions: wp,
+      zoom: isFinite(zoom) && zoom > 0 ? zoom : null, user_agent: $("ae-ua").value.trim() || null, inject_script: $("ae-inject").value.trim() || null
+    };
+  }
+
   var lastAudit = null;
   function showAudit(entries) {
     lastAudit = entries;
@@ -633,7 +775,7 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
     }
     if (e.target.tagName === "INPUT" && e.key !== "F5") return;
     if (S && (S.locked || S.confirm)) return;
-    if (e.key === "Escape" && $("overlay").classList.contains("show")) { closeSettings(); return; }
+    if (e.key === "Escape" && $("overlay").classList.contains("show")) { if (appEdit) { appEdit = null; renderSettings(true); } else closeSettings(); return; }
     if (e.ctrlKey && !e.shiftKey && (e.key === "k" || e.key === "K")) { e.preventDefault(); openPalette(); return; }
     if (e.ctrlKey && e.shiftKey && (e.key === "L" || e.key === "l")) { e.preventDefault(); send("lock"); return; }
     if (e.key === "F5" || (e.ctrlKey && (e.key === "r" || e.key === "R"))) { e.preventDefault(); send("reload_tab"); }
@@ -652,6 +794,7 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
       S.catalogSig = JSON.stringify([S.apps.map(function (a) { return a.id + a.name + a.url + a.icon; }), S.shells.map(function (s) { return s.id + s.name; })]);
       document.documentElement.style.setProperty("--bar-h", S.barHeight + "px");
       document.documentElement.style.setProperty("--head-h", S.headerHeight + "px");
+      document.documentElement.dataset.theme = S.effectiveTheme || "dark";
       document.body.classList.toggle("kiosk", !!S.kiosk);
       $("settings").style.display = S.kiosk ? "none" : "";
       if (!S.kiosk && kioskPrompt) kioskPrompt = false;
@@ -667,6 +810,10 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
       var i = $("pinin"); if (i) { i.value = ""; i.focus(); }
     },
     auditLog: function (entries) { showAudit(entries); },
+    appError: function (msg) { var e = $("apperr"); if (e) e.textContent = msg; else brustShell.toast(msg); },
+    appSaved: function () { if (appEdit) { appEdit = null; renderSettings(true); } },
+    privacyError: function (msg) { var e = $("pverr"); if (e) e.textContent = msg; else brustShell.toast(msg); },
+    privacySaved: function () { brustShell.toast("Privacy settings saved"); },
     toast: function (msg) {
       var t = $("toast"); t.textContent = msg; t.style.display = "block";
       clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.style.display = "none"; }, 6000);

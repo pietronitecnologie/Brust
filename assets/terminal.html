@@ -6,6 +6,7 @@
 <link rel="stylesheet" href="vendor/xterm.css">
 <style>
   html, body { margin: 0; height: 100%; background: #0f1115; overflow: hidden; }
+  html[data-theme="light"], html[data-theme="light"] body { background: #ffffff; }
   #term { position: absolute; inset: 4px 0 0 6px; }
   .xterm .xterm-viewport { scrollbar-width: thin; scrollbar-color: #3a3f4b transparent; }
 </style>
@@ -85,6 +86,16 @@
   post({ t: "pty_ready", cols: term.cols, rows: term.rows });
   term.focus();
   window.__term_focus = function () { term.focus(); };
+  var DARK = term.options.theme;
+  var LIGHT = {
+    background: "#ffffff", foreground: "#1f2430", cursor: "#2d5bd3", selectionBackground: "#cfdcff",
+    black: "#1f2430", red: "#c4213b", green: "#2f7d32", yellow: "#986801", blue: "#2d5bd3",
+    magenta: "#8f3bb8", cyan: "#0e7c86", white: "#5d6677", brightBlack: "#8a93a3", brightWhite: "#1f2430"
+  };
+  window.__brust_theme = function (t) {
+    document.documentElement.dataset.theme = t === "light" ? "light" : "dark";
+    term.options.theme = t === "light" ? LIGHT : DARK;
+  };
 })();
 </script>
 </body>

@@ -33,6 +33,8 @@ files, clipboard, serial ports, printers) and other installed software.
   command palette (Ctrl+K), command line and `brust://` links, native notifications and badges,
   panes detached into their own window.
 * **Industrial**: printing, kiosk mode, signed central configuration, signed self-update.
+* **Configured from inside Brust**: apps, privacy and appearance are edited in ⚙ Settings, no
+  file editing needed. **Light and dark theme** (or follow the system).
 * **SDKs** for web apps (JS) and local software (Python, Node.js, C#) in [`sdk/`](sdk/README.md).
 
 ## Building
@@ -52,7 +54,22 @@ On Linux you need `libwebkit2gtk-4.1-dev` and `libgtk-3-dev`.
 
 ## Configuration
 
-On first launch `config.json` is created (⚙ → *Edit config.json*):
+Everything day-to-day is configured **inside Brust**, in ⚙ Settings:
+
+* **Appearance**: System / Dark / Light theme (interface, terminals and notes).
+* **Apps**: *＋ Add app* (also from the content picker of an empty pane), *Edit*, *Delete*.
+  The form covers name, address, icon, ID, extra addresses of the app, external links,
+  permissions, programs and folders allowed, privacy options, browser permissions and the
+  advanced options below. Open panes of an edited app are reopened with the new settings.
+* **Privacy**: tracker blocking, extra blocked / allowed domains, block list files, confirmation
+  of sensitive commands, activity log, auto-lock, PIN, remembered permissions.
+
+Brust starts with no apps: add the first one from the empty pane. All settings are stored in
+`config.json`, which can still be edited by hand (⚙ → *Edit config.json*) or distributed
+centrally (see *Central configuration*); when the central configuration defines `apps` or
+`privacy`, those sections become read-only in Settings.
+
+The file is created on first launch:
 
 * Windows: `%APPDATA%\Pietroni\Brust\config\config.json`
 * Linux: `~/.config/brust/config.json`
@@ -101,7 +118,8 @@ On first launch `config.json` is created (⚙ → *Edit config.json*):
   "remote_config": null,
   "update": null,
   "register_protocol": true,
-  "default_printer": null
+  "default_printer": null,
+  "theme": "system"
 }
 ```
 
@@ -146,8 +164,9 @@ always use this default policy.
 | `update` | `null` | Self-update: `{manifest_url, public_key, check_on_start}`. |
 | `register_protocol` | `true` | Windows: register `brust://` links for the current user (HKCU) at every start. `false` stops the registration (an existing one is not removed). |
 | `default_printer` | `null` | Printer used by `print.page` when the app does not name one (system default if empty). |
+| `theme` | `"system"` | `"system"`, `"dark"` or `"light"` (also in Settings → Appearance). |
 
-After a change: ⚙ → *Reload configuration*. Panes that are already open keep their previous
+After editing the file by hand: ⚙ → *Reload configuration*. Panes that are already open keep their previous
 settings until they are reopened. Changes to the WebSocket bridge take effect on the next launch.
 The tracker-blocking proxy is started at launch (or on reload, if blocking was just enabled).
 
