@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use crate::layout::Layout;
 
 /// A web app registered in the client.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AppDef {
     pub id: String,
     pub name: String,
@@ -41,13 +41,42 @@ pub struct AppDef {
     /// JS file injected into every page of the app (adapter for apps unaware of the bridge).
     #[serde(default)]
     pub inject_script: Option<String>,
+
+    /* ---- privacy ---- */
+    /// Own cookie/storage profile, separate from other apps (default true).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub isolated: Option<bool>,
+    /// Delete the app's cookies/storage when Brust exits.
+    #[serde(default)]
+    pub clear_on_exit: bool,
+    /// Never store cookies/storage on disk (private mode).
+    #[serde(default)]
+    pub incognito: bool,
+    /// Block trackers/ads (overrides `privacy.block_trackers`).
+    #[serde(default)]
+    pub block_trackers: Option<bool>,
+    /// Ask the user before sensitive bridge commands (overrides `privacy.confirm_sensitive`).
+    #[serde(default)]
+    pub confirm: Option<bool>,
+    /// Browser permissions: name -> "allow" | "deny" | "default".
+    /// Names: camera, microphone, geolocation, notifications, clipboard_read, display_capture,
+    /// midi, sensors, local_fonts, window_management, pointer_lock, automatic_downloads,
+    /// file_system_access, autoplay. Camera, microphone, geolocation and display capture are
+    /// denied unless allowed here.
+    #[serde(default)]
+    pub web_permissions: HashMap<String, String>,
 }
+
 
 fn yes() -> bool {
     true
 }
 
 impl AppDef {
+    pub fn is_isolated(&self) -> bool {
+        self.isolated.unwrap_or(true)
+    }
+
     pub fn has(&self, perm: &str) -> bool {
         self.permissions.iter().any(|p| p == perm || p == "*")
     }
@@ -111,6 +140,75 @@ impl Default for BridgeConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PrivacyConfig {
+    /// Block trackers/ads for apps and web panes (through a local filtering proxy).
+    #[serde(default)]
+    pub block_trackers: bool,
+    /// Extra block lists (hosts files or one domain per line).
+    #[serde(default)]
+    pub blocklists: Vec<String>,
+    #[serde(default)]
+    pub block_domains: Vec<String>,
+    #[serde(default)]
+    pub allow_domains: Vec<String>,
+    /// Ask before exec, file writes/deletes, serial ports, opening files and printing files.
+    #[serde(default = "yes")]
+    pub confirm_sensitive: bool,
+    /// Record bridge activity in audit.log.
+    #[serde(default = "yes")]
+    pub audit_log: bool,
+    /// Lock Brust (PIN) after this many idle minutes; 0 = never. Requires a PIN (Settings).
+    #[serde(default)]
+    pub lock_after_minutes: u32,
+}
+
+impl Default for PrivacyConfig {
+    fn default() -> Self {
+        serde_json::from_str("{}").unwrap()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct NotesConfig {
+    /// Folder for notebooks (Markdown files). Default: Documents/Brust Notes.
+    #[serde(default)]
+    pub dir: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct KioskConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    /// Template opened at start (replaces the saved session).
+    #[serde(default)]
+    pub template: Option<String>,
+}
+
+/// Central configuration: a signed file (see `brust --sign`) whose keys override config.json.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct RemoteConfig {
+    #[serde(default)]
+    pub url: String,
+    /// Base64 ed25519 public key that must have signed the file.
+    #[serde(default)]
+    pub public_key: String,
+    /// Re-check every N minutes (0 = only at start).
+    #[serde(default)]
+    pub refresh_minutes: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct UpdateConfig {
+    /// Signed update manifest (see GUIDE.md).
+    #[serde(default)]
+    pub manifest_url: String,
+    #[serde(default)]
+    pub public_key: String,
+    #[serde(default)]
+    pub check_on_start: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     #[serde(default)]
     pub apps: Vec<AppDef>,
@@ -121,6 +219,22 @@ pub struct Config {
     /// Enables developer tools (button in the pane).
     #[serde(default)]
     pub devtools: bool,
+    #[serde(default)]
+    pub privacy: PrivacyConfig,
+    #[serde(default)]
+    pub notes: NotesConfig,
+    #[serde(default)]
+    pub kiosk: KioskConfig,
+    #[serde(default)]
+    pub remote_config: Option<RemoteConfig>,
+    #[serde(default)]
+    pub update: Option<UpdateConfig>,
+    /// Register the brust:// link scheme for the current user (Windows).
+    #[serde(default = "yes")]
+    pub register_protocol: bool,
+    /// Default printer for print commands (system default if empty).
+    #[serde(default)]
+    pub default_printer: Option<String>,
 }
 
 impl Default for Config {
@@ -132,33 +246,30 @@ impl Default for Config {
                     name: "Ordo".into(),
                     url: "http://localhost:3000".into(),
                     icon: Some("📦".into()),
-                    allowed_origins: vec![],
                     external_links_in_browser: true,
-                    permissions: vec!["messaging".into(), "clipboard".into(), "open".into()],
-                    exec_allow: vec![],
-                    fs_roots: vec![],
-                    user_agent: None,
-                    zoom: None,
-                    inject_script: None,
+                    permissions: vec!["messaging".into(), "clipboard".into(), "open".into(), "notes".into()],
+                    ..Default::default()
                 },
                 AppDef {
                     id: "metodo".into(),
                     name: "Metodo".into(),
                     url: "http://localhost:8080".into(),
                     icon: Some("📐".into()),
-                    allowed_origins: vec![],
                     external_links_in_browser: true,
-                    permissions: vec!["messaging".into(), "clipboard".into(), "open".into()],
-                    exec_allow: vec![],
-                    fs_roots: vec![],
-                    user_agent: None,
-                    zoom: None,
-                    inject_script: None,
+                    permissions: vec!["messaging".into(), "clipboard".into(), "open".into(), "notes".into()],
+                    ..Default::default()
                 },
             ],
             shells: default_shells(),
             bridge: BridgeConfig::default(),
             devtools: cfg!(debug_assertions),
+            privacy: PrivacyConfig::default(),
+            notes: NotesConfig::default(),
+            kiosk: KioskConfig::default(),
+            remote_config: None,
+            update: None,
+            register_protocol: true,
+            default_printer: None,
         }
     }
 }
@@ -198,7 +309,13 @@ pub enum PaneContent {
         url: Option<String>,
     },
     Terminal { shell: String },
-    Url { url: String },
+    Url {
+        url: String,
+        /// Private pane: nothing stored on disk.
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        private: bool,
+    },
+    Notes { notebook: String },
 }
 
 impl PaneContent {
@@ -208,7 +325,8 @@ impl PaneContent {
             PaneContent::Empty => "-".into(),
             PaneContent::App { app, .. } => format!("app:{app}"),
             PaneContent::Terminal { shell } => format!("term:{shell}"),
-            PaneContent::Url { url } => format!("url:{}", origin_of(url).unwrap_or_default()),
+            PaneContent::Url { url, .. } => format!("url:{}", origin_of(url).unwrap_or_default()),
+            PaneContent::Notes { .. } => "notes".into(),
         }
     }
 }
@@ -258,8 +376,27 @@ impl Paths {
     pub fn sizes(&self) -> PathBuf {
         self.config_dir.join("sizes.json")
     }
-    pub fn webdata(&self) -> PathBuf {
-        self.data_dir.join("webdata")
+    /// Browser profile folder (cookies, storage) for a profile key.
+    pub fn profile(&self, key: &str) -> PathBuf {
+        self.data_dir.join("profiles").join(key)
+    }
+    pub fn templates(&self) -> PathBuf {
+        self.config_dir.join("templates.json")
+    }
+    pub fn grants(&self) -> PathBuf {
+        self.config_dir.join("grants.json")
+    }
+    pub fn remote_cache(&self) -> PathBuf {
+        self.config_dir.join("remote-config.cache.json")
+    }
+    pub fn token_secret(&self) -> PathBuf {
+        self.config_dir.join("bridge-token.dat")
+    }
+    pub fn pin_secret(&self) -> PathBuf {
+        self.config_dir.join("pin.dat")
+    }
+    pub fn audit_log(&self) -> PathBuf {
+        self.data_dir.join("audit.log")
     }
 }
 
@@ -287,46 +424,60 @@ pub fn save_json<T: Serialize>(path: &Path, value: &T) {
 }
 
 /// Loads the configuration; if missing, creates it with sample values.
+/// `remote` (verified central configuration) overrides top-level keys of the local file.
 /// Also returns any parse error to show to the user.
-pub fn load_config(paths: &Paths) -> (Config, Option<String>) {
+pub fn load_config(paths: &Paths, remote: Option<&serde_json::Value>) -> (Config, Option<String>) {
     let path = paths.config();
-    let (mut cfg, err) = match fs::read_to_string(&path) {
-        Ok(text) => match serde_json::from_str::<Config>(&text) {
-            Ok(c) => (c, None),
-            Err(e) => (Config::default(), Some(format!("Error in {}: {e}", path.display()))),
-        },
+    let local: Result<serde_json::Value, String> = match fs::read_to_string(&path) {
+        Ok(text) => serde_json::from_str(&text).map_err(|e| format!("Error in {}: {e}", path.display())),
         Err(_) => {
             let c = Config::default();
             save_json(&path, &c);
-            (c, None)
+            Ok(serde_json::to_value(&c).unwrap_or_default())
         }
+    };
+    let (mut cfg, err) = match local {
+        Ok(mut v) => {
+            if let (Some(obj), Some(serde_json::Value::Object(r))) = (v.as_object_mut(), remote) {
+                for (k, val) in r {
+                    if k != "remote_config" {
+                        obj.insert(k.clone(), val.clone());
+                    }
+                }
+            }
+            match serde_json::from_value::<Config>(v) {
+                Ok(c) => (c, None),
+                Err(e) => (Config::default(), Some(format!("Error in configuration: {e}"))),
+            }
+        }
+        Err(e) => (Config::default(), Some(e)),
     };
     if cfg.shells.is_empty() {
         cfg.shells = default_shells();
     }
-    if cfg.bridge.token.is_empty() && err.is_none() {
-        cfg.bridge.token = random_token();
-        save_json(&path, &cfg);
-    }
     (cfg, err)
 }
 
+/// Random hex token from the OS random generator.
 pub fn random_token() -> String {
-    use std::collections::hash_map::RandomState;
-    use std::hash::{BuildHasher, Hasher};
-    let mut out = String::new();
-    for i in 0..2u64 {
-        let mut h = RandomState::new().build_hasher();
-        h.write_u64(i);
-        h.write_u128(
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_nanos())
-                .unwrap_or(0),
-        );
-        out.push_str(&format!("{:016x}", h.finish()));
-    }
-    out
+    use rand_core::RngCore;
+    let mut b = [0u8; 24];
+    rand_core::OsRng.fill_bytes(&mut b);
+    b.iter().map(|x| format!("{x:02x}")).collect()
+}
+
+/// Default notes folder.
+pub fn default_notes_dir(paths: &Paths) -> PathBuf {
+    directories::UserDirs::new()
+        .and_then(|u| u.document_dir().map(|d| d.join("Brust Notes")))
+        .unwrap_or_else(|| paths.data_dir.join("notes"))
+}
+
+/// A saved tileset that can be reopened from the palette, the command line or kiosk mode.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Template {
+    pub name: String,
+    pub tab: SavedTab,
 }
 
 /// Normalized origin `scheme://host[:port]` (default port omitted).

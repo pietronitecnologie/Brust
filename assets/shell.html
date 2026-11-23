@@ -103,7 +103,42 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
 .err { background: #3a1f25; border: 1px solid #6b2c38; color: #ffc2cc; padding: 8px 10px; border-radius: 8px; margin: 8px 0; }
 .kbd { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 12px; color: var(--muted); }
 .kbd b { color: var(--text); font-weight: 500; }
-#toast { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); background: #3a1f25; border: 1px solid #6b2c38; color: #ffc2cc; padding: 8px 14px; border-radius: 8px; display: none; z-index: 60; max-width: 80vw; }
+.badge { min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 10.5px; font-weight: 700; display: inline-grid; place-items: center; flex-shrink: 0; }
+.kiosk .tab .x, .kiosk #newtab, .kiosk #layouts, .kiosk #tools .sep { display: none !important; }
+.priv { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; margin-top: 8px; user-select: none; }
+/* Modal (confirmation, lock screen, PIN) */
+#modal { position: absolute; inset: 0; z-index: 80; display: none; place-items: center; background: rgba(8, 9, 12, .78); }
+#modal.show { display: grid; }
+#modal.lock { background: radial-gradient(circle at 50% 35%, #1d2230, #0c0d11 70%); }
+.mbox { width: min(520px, 92vw); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px 24px; box-shadow: 0 24px 70px rgba(0,0,0,.55); user-select: text; }
+.mbox h3 { margin: 0 0 10px; font-size: 16px; }
+.mbox p { margin: 6px 0; color: var(--muted); line-height: 1.45; }
+.mbox pre { background: #101216; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; white-space: pre-wrap; word-break: break-all; font-family: Consolas, monospace; font-size: 12px; max-height: 180px; overflow: auto; color: var(--text); }
+.mbox .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+.btn.danger { background: #4a2730; color: #ffc2cc; }
+.btn.danger:hover { background: #5c2f3a; }
+.pin { width: 100%; background: #0f1115; border: 1px solid var(--line); border-radius: 9px; color: var(--text); padding: 10px 12px; font-size: 18px; letter-spacing: .3em; text-align: center; outline: none; margin-top: 10px; }
+.pin:focus { border-color: var(--accent); }
+.pinerr { color: #ff9aaa; min-height: 18px; margin-top: 6px; font-size: 12px; text-align: center; }
+/* Command palette */
+#palette { position: absolute; inset: 0; z-index: 70; display: none; justify-content: center; align-items: flex-start; padding-top: 12vh; background: rgba(8, 9, 12, .55); }
+#palette.show { display: flex; }
+.pal { width: min(620px, 92vw); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 24px 70px rgba(0,0,0,.55); overflow: hidden; }
+#palq { width: 100%; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--text); padding: 14px 16px; font-size: 15px; outline: none; }
+#pall { max-height: 52vh; overflow: auto; padding: 6px; }
+.pi { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.pi .pic { width: 22px; text-align: center; }
+.pi .pil { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pi .pih { color: var(--muted); font-size: 11px; }
+.pi.sel { background: #263453; }
+.dlg .grid2 { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; }
+.dlg input.f { background: #0f1115; border: 1px solid var(--line); border-radius: 7px; color: var(--text); padding: 6px 9px; outline: none; }
+.dlg input.f:focus { border-color: var(--accent); }
+.dlg .muted { color: var(--muted); font-size: 12px; }
+.dlg .mini { padding: 3px 9px; font-size: 12px; }
+#auditbox { max-height: 260px; overflow: auto; font-family: Consolas, monospace; font-size: 11.5px; background: #101216; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; margin-top: 8px; display: none; }
+#auditbox div { padding: 2px 0; border-bottom: 1px solid #1c1f25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#toast { position: absolute; left: 50%; top: 4px; height: 30px; line-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transform: translateX(-50%); background: #263453; border: 1px solid #3d6ae0; color: #dfe7ff; padding: 7px 14px; border-radius: 8px; display: none; z-index: 60; max-width: 80vw; }
 </style>
 </head>
 <body>
@@ -124,6 +159,8 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
 </div>
 <div id="stage"></div>
 <div id="overlay"><div class="dlg" id="dlg"></div></div>
+<div id="modal"></div>
+<div id="palette"><div class="pal"><input id="palq" placeholder="Type a command, an app, a tab…" spellcheck="false"><div id="pall"></div></div></div>
 <div id="toast"></div>
 
 <script>
@@ -157,12 +194,14 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
     reload: '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 2.5v3h-3"/></svg>',
     dev: '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 4 2 8l3.5 4M10.5 4 14 8l-3.5 4"/></svg>',
     close: '<svg width="11" height="11" viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg>',
-    term: "›_"
+    term: "›_",
+    detach: '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="9" height="9" rx="1.5"/><path d="M7 2h7v7M14 2 8.5 7.5"/></svg>'
   };
+  var badgeHtml = function (n) { return n > 0 ? '<span class="badge">' + (n > 99 ? "99+" : n) + "</span>" : ""; };
 
   function iconFor(p) {
     if (p.kind === "terminal") return '<span style="font-family:Consolas,monospace;font-size:11px;font-weight:700">›_</span>';
-    if (p.kind === "url") return "🌐";
+    if (p.kind === "url") return p.icon ? esc(p.icon) : "🌐";
     if (p.kind === "empty") return "＋";
     return esc(p.icon || "▣");
   }
@@ -174,6 +213,7 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
     var box = $("tabs");
     box.innerHTML = "";
     S.tabs.forEach(function (t, i) {
+      if (t.floating) return;
       var el = document.createElement("div");
       el.className = "tab" + (i === S.active ? " active" : "");
       el.title = t.title;
@@ -187,13 +227,13 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
         setTimeout(function () { inp.focus(); inp.select(); }, 0);
       } else {
         el.innerHTML = '<span class="ico">' + (t.icon ? esc(t.icon) : "") + '</span><span class="lbl">' + esc(t.title) + '</span>' +
-          (t.count > 1 ? '<span class="lay">' + layoutSvg(t.layout, 0.8) + "</span>" : "") +
+          (t.count > 1 ? '<span class="lay">' + layoutSvg(t.layout, 0.8) + "</span>" : "") + badgeHtml(t.badge) +
           '<button class="x" title="Close tab">' + I.close + "</button>";
         el.querySelector(".x").onclick = function (e) { e.stopPropagation(); send("close_tab", { index: i }); };
       }
       el.onmousedown = function (e) { if (e.button === 1) { e.preventDefault(); send("close_tab", { index: i }); } };
       el.onclick = function () { if (i !== S.active) send("select_tab", { index: i }); };
-      el.ondblclick = function (e) { if (e.target.closest(".x")) return; renaming = i; renderTabs(); };
+      el.ondblclick = function (e) { if (e.target.closest(".x") || S.kiosk) return; renaming = i; renderTabs(); };
       el.ondragstart = function (e) { dragTab = i; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", "tab"); };
       el.ondragover = function (e) { if (dragTab < 0) return; e.preventDefault(); el.classList.add("drop-before"); };
       el.ondragleave = function () { el.classList.remove("drop-before"); };
@@ -235,19 +275,22 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
     h += "<h3>Terminals</h3><div class='cards'>" + S.shells.map(function (s) {
       return '<button class="card" data-shell="' + esc(s.id) + '"><span class="ci" style="font-family:Consolas,monospace;font-size:12px;font-weight:700">›_</span><span class="ct"><div class="cn">' + esc(s.name) + '</div><div class="cu">' + esc(s.program) + "</div></span></button>";
     }).join("") + "</div>";
+    h += "<h3>Notes</h3><div class='cards'><button class='card' data-notes='1'><span class='ci'>📝</span><span class='ct'><div class='cn'>Notes</div><div class='cu'>Local Markdown notebooks</div></span></button></div>";
     h += "<h3>Web address</h3><div class='urlrow'><input class='url' placeholder='https://…' spellcheck='false'><button class='btn go'>Open</button>" +
-      (p.picking ? "<button class='btn ghost cancel'>Cancel</button>" : "") + "</div>";
+      (p.picking ? "<button class='btn ghost cancel'>Cancel</button>" : "") + "</div>" +
+      "<label class='priv'><input type='checkbox' class='private'> Private page: nothing is stored on disk (cookies, storage, history)</label>";
     return '<div class="picker">' + h + "</div>";
   }
 
   function bindPicker(el, p) {
     el.querySelectorAll("[data-app]").forEach(function (b) { b.onclick = function () { send("set_content", { pane: p.id, content: { kind: "app", app: b.dataset.app } }); }; });
     el.querySelectorAll("[data-shell]").forEach(function (b) { b.onclick = function () { send("set_content", { pane: p.id, content: { kind: "terminal", shell: b.dataset.shell } }); }; });
+    el.querySelectorAll("[data-notes]").forEach(function (b) { b.onclick = function () { send("set_content", { pane: p.id, content: { kind: "notes", notebook: "Inbox" } }); }; });
     var inp = el.querySelector(".url");
     var go = function () {
       var u = inp.value.trim(); if (!u) return;
       if (!/^[a-z]+:\/\//i.test(u)) u = (/^(localhost|127\.|\d+\.\d+\.\d+\.\d+)/.test(u) ? "http://" : "https://") + u;
-      send("set_content", { pane: p.id, content: { kind: "url", url: u } });
+      send("set_content", { pane: p.id, content: { kind: "url", url: u, private: el.querySelector(".private").checked } });
     };
     el.querySelector(".go").onclick = go;
     inp.onkeydown = function (e) { if (e.key === "Enter") go(); if (e.key === "Escape" && p.picking) send("pick", { pane: p.id, on: false }); };
@@ -267,7 +310,7 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
       if (!el) {
         el = document.createElement("div");
         el.className = "pane";
-        el.innerHTML = '<div class="ph" draggable="true"></div><div class="pb"></div>';
+        el.innerHTML = '<div class="ph"></div><div class="pb"></div>';
         stage.appendChild(el);
         paneEls.set(p.id, el);
         bindPaneDrag(el, p.id);
@@ -275,16 +318,18 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
       place(el, p.rect);
       el.classList.toggle("focused", !!p.focused && S.panes.length > 1);
       var head = el.querySelector(".ph");
-      var hsig = [p.kind, p.title, p.subtitle, p.icon, p.picking, S.devtools].join("|");
+      var hsig = [p.kind, p.title, p.subtitle, p.icon, p.picking, S.devtools, S.kiosk, p.badge, S.panes.length].join("|");
       if (head.dataset.sig !== hsig) {
         head.dataset.sig = hsig;
         var showing = p.kind !== "empty" && !p.picking;
         head.title = p.subtitle ? p.title + " — " + p.subtitle : p.title;
-        head.innerHTML = '<span class="ico">' + iconFor(p) + '</span><span class="ttl">' + esc(p.title) + (p.subtitle ? "<small>" + esc(p.subtitle) + "</small>" : "") + "</span>" +
-          (p.kind !== "empty" ? '<button class="hb" data-a="swap" title="Change content">' + I.swap + "</button>" : "") +
+        var k = S.kiosk;
+        head.innerHTML = '<span class="ico">' + iconFor(p) + '</span><span class="ttl">' + esc(p.title) + (p.subtitle ? "<small>" + esc(p.subtitle) + "</small>" : "") + "</span>" + badgeHtml(p.badge) +
+          (p.kind !== "empty" && !k ? '<button class="hb" data-a="swap" title="Change content">' + I.swap + "</button>" : "") +
           (showing ? '<button class="hb" data-a="reload" title="Reload pane">' + I.reload + "</button>" : "") +
-          (showing && S.devtools && p.kind !== "terminal" ? '<button class="hb" data-a="dev" title="Developer tools">' + I.dev + "</button>" : "") +
-          (p.kind !== "empty" || S.panes.length > 1 ? '<button class="hb close" data-a="close" title="Close pane">' + I.close + "</button>" : "");
+          (showing && !k ? '<button class="hb" data-a="detach" title="Open in a separate window">' + I.detach + "</button>" : "") +
+          (showing && S.devtools && p.kind !== "terminal" && p.kind !== "notes" ? '<button class="hb" data-a="dev" title="Developer tools">' + I.dev + "</button>" : "") +
+          ((p.kind !== "empty" || S.panes.length > 1) && !k ? '<button class="hb close" data-a="close" title="Close pane">' + I.close + "</button>" : "");
         head.querySelectorAll(".hb").forEach(function (b) {
           b.onclick = function (e) {
             e.stopPropagation();
@@ -292,10 +337,12 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
             if (a === "swap") send("pick", { pane: p.id, on: !p.picking });
             else if (a === "reload") send("reload_pane", { pane: p.id });
             else if (a === "dev") send("devtools", { pane: p.id });
+            else if (a === "detach") send("detach", { pane: p.id });
             else if (a === "close") send("close_pane", { pane: p.id });
           };
         });
       }
+      head.draggable = !S.kiosk;
       head.onmousedown = function (e) { if (!e.target.closest(".hb")) send("focus_pane", { pane: p.id }); };
       var body = el.querySelector(".pb");
       var needPicker = p.kind === "empty" || p.picking;
@@ -370,26 +417,208 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
   }
 
   /* ---------- Settings ---------- */
-  function openSettings() { send("overlay", { on: true }); $("overlay").classList.add("show"); renderSettings(); }
+  function openSettings() { if (S.kiosk) return; closePalette(true); send("overlay", { on: true }); $("overlay").classList.add("show"); renderSettings(true); }
   function closeSettings() { $("overlay").classList.remove("show"); send("overlay", { on: false }); }
-  function renderSettings() {
-    if (!$("overlay").classList.contains("show")) return;
-    var b = S.bridge;
+  var auditShown = false;
+  function sec(title) { return "<h4>" + esc(title) + "</h4>"; }
+  var settingsSig = "";
+  function renderSettings(force) {
+    if (!$("overlay").classList.contains("show")) { settingsSig = ""; return; }
+    // Rebuild only when something shown here changed (keeps typing and messages intact).
+    var sig = JSON.stringify([S.version, S.configError, S.configPath, S.apps, S.privacy, S.pinSet, S.templates, S.notesDir, S.bridge, S.remote, S.update,
+      S.tabs.filter(function (t) { return t.floating; }).map(function (t) { return t.title; }), auditShown]);
+    if (sig === settingsSig && !force) return;
+    settingsSig = sig;
+    // Keep what the user is typing across state updates.
+    var keep = {};
+    $("dlg").querySelectorAll("input[id]").forEach(function (x) { keep[x.id] = x.value; });
+    var active = document.activeElement && document.activeElement.id;
+    var b = S.bridge, pv = S.privacy;
     var h = "<h2>Brust <span style='color:var(--muted);font-weight:400;font-size:13px'>v" + esc(S.version) + "</span></h2>";
     if (S.configError) h += "<div class='err'>" + esc(S.configError) + "</div>";
     h += "<div class='row'><button class='btn' data-c='open_config'>Edit config.json</button><button class='btn ghost' data-c='reload_config'>Reload configuration</button><button class='btn ghost' data-c='open_config_dir'>Open folder</button></div>";
-    h += "<div style='margin-top:8px;color:var(--muted);font-size:12px'>" + esc(S.configPath) + "</div>";
-    h += "<h4>Apps</h4><table>" + (S.apps.length ? S.apps.map(function (a) {
-      return "<tr><td>" + esc(a.icon || "") + " <b>" + esc(a.name) + "</b> <code>" + esc(a.id) + "</code></td><td>" + esc(a.url) + "<br><span style='color:var(--muted)'>permissions: " + esc(a.permissions.join(", ") || "none") + "</span></td></tr>";
+    h += "<div class='muted' style='margin-top:8px'>" + esc(S.configPath) + "</div>";
+
+    h += sec("Apps") + "<table>" + (S.apps.length ? S.apps.map(function (a) {
+      var flags = [a.isolated ? "own profile" : "shared profile"];
+      if (a.incognito) flags.push("private");
+      if (a.clearOnExit) flags.push("cleared on exit");
+      return "<tr><td>" + esc(a.icon || "") + " <b>" + esc(a.name) + "</b> <code>" + esc(a.id) + "</code></td><td>" + esc(a.url) +
+        "<br><span class='muted'>permissions: " + esc(a.permissions.join(", ") || "none") + " · " + esc(flags.join(", ")) + "</span></td></tr>";
     }).join("") : "<tr><td>None</td></tr>") + "</table>";
-    h += "<h4>Bridge for local software (WebSocket)</h4>";
-    h += b.enabled ? "<div>Address: <code>ws://127.0.0.1:" + b.port + "/?token=" + esc(b.token) + "</code></div><div style='margin-top:6px;color:var(--muted)'>Status: " + esc(b.status) + " · connected clients: " + b.clients.length + (b.clients.length ? " (" + esc(b.clients.join(", ")) + ")" : "") + "</div>" : "<div style='color:var(--muted)'>Disabled</div>";
-    h += "<h4>Shortcuts</h4><div class='kbd'><b>F5 · Ctrl+R</b><span>Reload the tab / tileset</span><b>Ctrl+T</b><span>New tab</span><b>Ctrl+Tab</b><span>Next tab (Shift: previous)</span><b>Alt+1…4</b><span>Focus pane</span><b>Double-click tab</b><span>Rename</span><b>Double-click splitter</b><span>Reset proportions</span><b>Drag header</b><span>Swap two panes</span><b>Ctrl+Shift+C / V</b><span>Copy / paste in terminal (also right-click)</span></div>";
+
+    h += sec("Privacy");
+    h += "<div class='grid2'>" +
+      "<span>Tracker and ad blocking</span><span class='muted'>" + (pv.blockTrackers ? "on · " + pv.blocked + " requests blocked" : "off (privacy.block_trackers)") + "</span>" +
+      "<span>Ask before sensitive commands</span><span class='muted'>" + (pv.confirmSensitive ? "on" : "off") + "</span>" +
+      "<span>Activity log</span><span>" + (pv.auditLog ? "<button class='btn ghost mini' id='auditbtn'>" + (auditShown ? "Hide" : "Show") + "</button> <button class='btn ghost mini' data-c='open_audit'>Open file</button>" : "<span class='muted'>off</span>") + "</span>" +
+      "<span>Auto-lock</span><span class='muted'>" + (pv.lockAfter ? "after " + pv.lockAfter + " min idle" : "off (privacy.lock_after_minutes)") + "</span>" +
+      "</div><div id='auditbox'></div>";
+    if (pv.grants.length) {
+      h += "<div style='margin-top:10px'><b style='font-size:12px'>Always allowed</b> <button class='btn ghost mini' data-grant='*'>Revoke all</button></div><div class='grid2' style='margin-top:6px'>" +
+        pv.grants.map(function (g) { var p = g.split("|"); return "<span><code>" + esc(p[0]) + "</code> " + esc(p[1]) + (p[2] ? " <code>" + esc(p[2]) + "</code>" : "") + "</span><button class='btn ghost mini' data-grant='" + esc(g) + "'>Revoke</button>"; }).join("") + "</div>";
+    }
+    h += "<div style='margin-top:12px'><b style='font-size:12px'>PIN</b> <span class='muted'>" + (S.pinSet ? "set" : "not set — needed for the lock screen and to leave kiosk mode") + "</span></div>" +
+      "<div class='row' style='align-items:center'>" + (S.pinSet ? "<input class='f' id='pinold' type='password' placeholder='Current PIN' size='12'>" : "") +
+      "<input class='f' id='pinnew' type='password' placeholder='New PIN' size='12'><button class='btn ghost mini' id='pinsave'>" + (S.pinSet ? "Change" : "Set PIN") + "</button>" +
+      (S.pinSet ? "<button class='btn ghost mini' id='pinclear'>Remove</button><button class='btn mini' data-c='lock'>Lock now</button>" : "") + "</div><div class='pinerr' id='seterr' style='text-align:left'></div>";
+
+    h += sec("Templates (saved tilesets)") + "<div class='row' style='align-items:center;margin-top:0'><input class='f' id='tplname' placeholder='Name for the current tab' size='26'><button class='btn ghost mini' id='tplsave'>Save current tab</button></div>";
+    if (S.templates.length) h += "<div class='grid2' style='margin-top:8px'>" + S.templates.map(function (n) {
+      return "<span>" + esc(n) + "</span><span><button class='btn ghost mini' data-tpl-open='" + esc(n) + "'>Open</button> <button class='btn ghost mini' data-tpl-del='" + esc(n) + "'>Delete</button></span>"; }).join("") + "</div>";
+    else h += "<div class='muted' style='margin-top:6px'>Also available from Ctrl+K, the command line (<code>--template name</code>) and <code>brust://template?name=…</code>.</div>";
+
+    var floating = S.tabs.map(function (t, i) { return { t: t, i: i }; }).filter(function (x) { return x.t.floating; });
+    if (floating.length) h += sec("Separate windows") + "<div class='grid2'>" + floating.map(function (x) {
+      return "<span>" + esc(x.t.title) + "</span><button class='btn ghost mini' data-reattach='" + x.i + "'>Bring back as tab</button>"; }).join("") + "</div>";
+
+    h += sec("Notes") + "<div class='grid2'><span class='muted'>" + esc(S.notesDir) + "</span><button class='btn ghost mini' data-c='open_notes_dir'>Open folder</button></div>" +
+      "<div class='muted' style='margin-top:4px'>Select text in any app and press <b>Ctrl+Shift+S</b> to save it to the notes.</div>";
+
+    h += sec("Bridge for local software (WebSocket)");
+    h += b.enabled ? "<div>Address: <code>ws://127.0.0.1:" + b.port + "/?token=" + esc(b.token) + "</code></div><div class='muted' style='margin-top:6px'>Status: " + esc(b.status) + " · connected clients: " + b.clients.length + (b.clients.length ? " (" + esc(b.clients.join(", ")) + ")" : "") + "</div>" : "<div class='muted'>Disabled</div>";
+
+    h += sec("Central configuration & updates") + "<div class='grid2'>" +
+      "<span>Central configuration</span><span class='muted'>" + (S.remote.configured ? esc(S.remote.status) + " <button class='btn ghost mini' data-c='refresh_remote'>Refresh</button>" : "not configured (remote_config)") + "</span>" +
+      "<span>Updates</span><span class='muted'>" + (S.update.configured ? esc(S.update.status || "—") + " <button class='btn ghost mini' data-c='check_update'>Check</button>" +
+        (S.update.available ? " <button class='btn mini' data-c='install_update'>Install " + esc(S.update.available.version) + " and restart</button>" : "") : "not configured (update)") + "</span></div>" +
+      (S.update.available && S.update.available.notes ? "<pre style='white-space:pre-wrap;font-size:12px'>" + esc(S.update.available.notes) + "</pre>" : "");
+
+    h += sec("Shortcuts") + "<div class='kbd'><b>Ctrl+K</b><span>Command palette</span><b>F5 · Ctrl+R</b><span>Reload the tab / tileset</span><b>Ctrl+T</b><span>New tab</span><b>Ctrl+Tab</b><span>Next tab (Shift: previous)</span><b>Alt+1…4</b><span>Focus pane</span><b>Ctrl+Shift+S</b><span>Save the selected text to the notes</span><b>Ctrl+Shift+L</b><span>Lock Brust</span><b>Double-click tab</b><span>Rename</span><b>Double-click splitter</b><span>Reset proportions</span><b>Drag header</b><span>Swap two panes</span><b>Ctrl+Shift+C / V</b><span>Copy / paste in terminal (also right-click)</span><b>Ctrl+Alt+Shift+K</b><span>Leave kiosk mode (PIN)</span></div>";
     h += "<div class='row' style='justify-content:flex-end;margin-top:18px'><button class='btn' id='closeset'>Close</button></div>";
     $("dlg").innerHTML = h;
-    $("dlg").querySelectorAll("[data-c]").forEach(function (x) { x.onclick = function () { send(x.dataset.c); }; });
+    Object.keys(keep).forEach(function (id) { var x = $(id); if (x) x.value = keep[id]; });
+    if (active && $(active)) $(active).focus();
+    $("dlg").querySelectorAll("[data-c]").forEach(function (x) { x.onclick = function () { if (x.dataset.c === "lock") closeSettings(); send(x.dataset.c); }; });
+    $("dlg").querySelectorAll("[data-grant]").forEach(function (x) { x.onclick = function () { send("revoke_grant", { key: x.dataset.grant }); }; });
+    $("dlg").querySelectorAll("[data-tpl-open]").forEach(function (x) { x.onclick = function () { closeSettings(); send("open_template", { name: x.dataset.tplOpen }); }; });
+    $("dlg").querySelectorAll("[data-tpl-del]").forEach(function (x) { x.onclick = function () { send("delete_template", { name: x.dataset.tplDel }); }; });
+    $("dlg").querySelectorAll("[data-reattach]").forEach(function (x) { x.onclick = function () { closeSettings(); send("reattach", { index: +x.dataset.reattach }); }; });
+    var ab = $("auditbtn"); if (ab) ab.onclick = function () { auditShown = !auditShown; if (auditShown) send("audit_tail"); renderSettings(); };
+    if (auditShown && lastAudit) showAudit(lastAudit);
+    $("tplsave").onclick = function () { var n = $("tplname").value.trim(); if (n) { send("save_template", { name: n }); $("tplname").value = ""; } };
+    $("pinsave").onclick = function () { $("seterr").textContent = ""; send("set_pin", { old: $("pinold") ? $("pinold").value : "", pin: $("pinnew").value }); if ($("pinold")) $("pinold").value = ""; $("pinnew").value = ""; };
+    var pc = $("pinclear"); if (pc) pc.onclick = function () { $("seterr").textContent = ""; send("clear_pin", { old: $("pinold").value }); $("pinold").value = ""; };
     $("closeset").onclick = closeSettings;
   }
+  var lastAudit = null;
+  function showAudit(entries) {
+    lastAudit = entries;
+    var box = $("auditbox"); if (!box) return;
+    box.style.display = "block";
+    box.innerHTML = entries.length ? entries.map(function (e) {
+      return "<div title='" + esc(e.detail) + "'>" + esc(e.time) + " · <b>" + esc(e.app) + "</b> · " + esc(e.cmd) + (e.detail ? " · " + esc(e.detail) : "") + " · " + esc(e.decision) + (e.outcome ? " · " + esc(e.outcome) : "") + "</div>";
+    }).join("") : "<div>No activity recorded yet.</div>";
+  }
+
+  /* ---------- Modal: confirmation, lock screen, kiosk exit ---------- */
+  var kioskPrompt = false, modalSig = "";
+  function renderModal() {
+    var m = $("modal"), sig, h = "";
+    if (S.locked || kioskPrompt) {
+      sig = "lock|" + S.locked + "|" + kioskPrompt;
+      if (modalSig === sig) return;
+      h = "<div class='mbox' style='text-align:center'><h3>" + (S.locked ? "🔒 Brust is locked" : "Leave kiosk mode") + "</h3><p>" + (S.locked ? "Enter your PIN to continue." : (S.pinSet ? "Enter the PIN." : "No PIN is set: press Enter to continue.")) + "</p>" +
+        "<input class='pin' id='pinin' type='password' autocomplete='off'><div class='pinerr' id='pinerr'></div>" +
+        (kioskPrompt ? "<div class='row' style='justify-content:center'><button class='btn ghost' id='pincancel'>Cancel</button></div>" : "") + "</div>";
+      m.className = "show lock"; m.innerHTML = h; modalSig = sig;
+      var inp = $("pinin");
+      inp.onkeydown = function (e) { if (e.key === "Enter") { send("unlock", { pin: inp.value, kiosk: kioskPrompt }); inp.value = ""; } if (e.key === "Escape" && kioskPrompt) { kioskPrompt = false; send("overlay", { on: false }); renderModal(); } };
+      var c = $("pincancel"); if (c) c.onclick = function () { kioskPrompt = false; send("overlay", { on: false }); renderModal(); };
+      setTimeout(function () { inp.focus(); }, 30);
+      return;
+    }
+    if (S.confirm) {
+      var c = S.confirm;
+      sig = "confirm|" + c.seq;
+      if (modalSig === sig) return;
+      var what = { "shell.exec": "run a program", "shell.open": "open a file or link", "fs.write": "write a file", "fs.remove": "delete a file or folder", "fs.mkdir": "create a folder", "serial.open": "open a serial port", "print.file": "print a file" }[c.cmd] || c.cmd;
+      h = "<div class='mbox'><h3>⚠ " + esc(c.app) + " wants to " + esc(what) + "</h3><pre>" + esc(c.detail || c.cmd) + "</pre>" +
+        "<p>Allow only if you expected this action." + (c.queued > 1 ? " (" + (c.queued - 1) + " more waiting)" : "") + "</p>" +
+        "<div class='row'><button class='btn danger' data-d='deny'>Deny</button><button class='btn ghost' data-d='always'>Always allow</button><button class='btn' data-d='once'>Allow once</button></div></div>";
+      m.className = "show"; m.innerHTML = h; modalSig = sig;
+      m.querySelectorAll("[data-d]").forEach(function (b) { b.onclick = function () { send("confirm_reply", { seq: c.seq, decision: b.dataset.d }); }; });
+      setTimeout(function () { var d = m.querySelector("[data-d='deny']"); if (d) d.focus(); }, 30);
+      return;
+    }
+    if (kioskPrompt) return;
+    m.className = ""; m.innerHTML = ""; modalSig = "";
+  }
+
+  /* ---------- Command palette ---------- */
+  var palItems = [], palSel = 0;
+  function paletteItems() {
+    var it = [];
+    var add = function (icon, label, hint, run) { it.push({ icon: icon, label: label, hint: hint || "", run: run }); };
+    S.apps.forEach(function (a) {
+      add(a.icon || "▣", "Open " + a.name, "new tab", function () { send("open", { content: { kind: "app", app: a.id } }); });
+      if (!S.kiosk) add(a.icon || "▣", "Open " + a.name + " here", "focused pane", function () { send("open", { here: true, content: { kind: "app", app: a.id } }); });
+    });
+    S.tabs.forEach(function (t, i) {
+      if (t.floating) add("⧉", "Window: " + t.title, "bring to front", function () { send("select_tab", { index: i }); });
+      else if (i !== S.active) add("⇥", "Go to tab: " + t.title, "", function () { send("select_tab", { index: i }); });
+    });
+    S.templates.forEach(function (n) { add("▦", "Open template: " + n, "", function () { send("open_template", { name: n }); }); });
+    if (!S.kiosk) {
+      S.shells.forEach(function (s) { add("›_", "New terminal: " + s.name, "", function () { send("open", { content: { kind: "terminal", shell: s.id } }); }); });
+      add("📝", "Open notes", "", function () { send("open", { content: { kind: "notes", notebook: "Inbox" } }); });
+      add("🕶", "New private web page", "nothing stored", function () { send("open", { content: { kind: "url", url: "https://duckduckgo.com/", private: true } }); });
+      add("＋", "New tab", "Ctrl+T", function () { send("new_tab"); });
+      S.layouts.forEach(function (l) { add("▤", "Layout: " + (LAYOUT_NAMES[l] || l), "", function () { send("set_layout", { layout: l }); }); });
+      add("⧉", "Open focused pane in a separate window", "", function () { send("detach"); });
+      add("⚙", "Settings", "", function () { setTimeout(openSettings, 0); });
+      add("▦", "Save current tab as template…", "", function () { setTimeout(function () { openSettings(); var x = $("tplname"); if (x) x.focus(); }, 0); });
+    }
+    add("⟳", "Reload tab", "F5", function () { send("reload_tab"); });
+    if (S.pinSet) add("🔒", "Lock Brust", "Ctrl+Shift+L", function () { send("lock"); });
+    return it;
+  }
+  function score(label, q) {
+    if (!q) return 1;
+    label = label.toLowerCase(); q = q.toLowerCase();
+    var i = label.indexOf(q); if (i >= 0) return 100 - i;
+    var j = 0; for (var k = 0; k < label.length && j < q.length; k++) if (label[k] === q[j]) j++;
+    return j === q.length ? 10 : 0;
+  }
+  function renderPalette() {
+    var q = $("palq").value.trim();
+    var list = paletteItems().map(function (x) { return { x: x, s: score(x.label, q) }; }).filter(function (o) { return o.s > 0; });
+    list.sort(function (a, b) { return b.s - a.s; });
+    palItems = list.map(function (o) { return o.x; }).slice(0, 60);
+    palSel = Math.min(palSel, Math.max(0, palItems.length - 1));
+    $("pall").innerHTML = palItems.map(function (x, i) {
+      return "<div class='pi" + (i === palSel ? " sel" : "") + "' data-i='" + i + "'><span class='pic'>" + esc(x.icon) + "</span><span class='pil'>" + esc(x.label) + "</span><span class='pih'>" + esc(x.hint) + "</span></div>";
+    }).join("") || "<div class='pi'><span class='pil muted'>No results</span></div>";
+    $("pall").querySelectorAll("[data-i]").forEach(function (el) {
+      el.onmousemove = function () { if (palSel !== +el.dataset.i) { palSel = +el.dataset.i; renderPalette(); } };
+      el.onclick = function () { runPalette(+el.dataset.i); };
+    });
+    var sel = $("pall").querySelector(".sel"); if (sel) sel.scrollIntoView({ block: "nearest" });
+  }
+  function openPalette() {
+    if (!S || S.locked || S.confirm || $("overlay").classList.contains("show")) return;
+    send("overlay", { on: true });
+    $("palette").classList.add("show"); $("palq").value = ""; palSel = 0; renderPalette();
+    setTimeout(function () { $("palq").focus(); }, 20);
+  }
+  function closePalette(keepOverlay) {
+    if (!$("palette").classList.contains("show")) return;
+    $("palette").classList.remove("show");
+    if (!keepOverlay) send("overlay", { on: false });
+  }
+  function runPalette(i) {
+    var x = palItems[i]; if (!x) return;
+    closePalette(false); x.run();
+  }
+  $("palq").addEventListener("input", function () { palSel = 0; renderPalette(); });
+  $("palq").addEventListener("keydown", function (e) {
+    if (e.key === "ArrowDown") { e.preventDefault(); palSel = Math.min(palSel + 1, palItems.length - 1); renderPalette(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); palSel = Math.max(palSel - 1, 0); renderPalette(); }
+    else if (e.key === "Enter") { e.preventDefault(); runPalette(palSel); }
+    else if (e.key === "Escape") { e.preventDefault(); closePalette(false); }
+  });
+  $("palette").addEventListener("mousedown", function (e) { if (e.target === $("palette")) closePalette(false); });
+
   $("overlay").addEventListener("mousedown", function (e) { if (e.target === $("overlay")) closeSettings(); });
 
   /* ---------- General ---------- */
@@ -397,12 +626,20 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
   $("reload").onclick = function () { send("reload_tab"); };
   $("settings").onclick = openSettings;
   document.addEventListener("keydown", function (e) {
+    if (e.ctrlKey && e.altKey && e.shiftKey && (e.key === "K" || e.key === "k")) {
+      e.preventDefault();
+      if (S && S.kioskConfigured && S.kiosk) { kioskPrompt = true; send("overlay", { on: true }); renderModal(); }
+      return;
+    }
     if (e.target.tagName === "INPUT" && e.key !== "F5") return;
+    if (S && (S.locked || S.confirm)) return;
     if (e.key === "Escape" && $("overlay").classList.contains("show")) { closeSettings(); return; }
+    if (e.ctrlKey && !e.shiftKey && (e.key === "k" || e.key === "K")) { e.preventDefault(); openPalette(); return; }
+    if (e.ctrlKey && e.shiftKey && (e.key === "L" || e.key === "l")) { e.preventDefault(); send("lock"); return; }
     if (e.key === "F5" || (e.ctrlKey && (e.key === "r" || e.key === "R"))) { e.preventDefault(); send("reload_tab"); }
     else if (e.ctrlKey && e.key === "Tab") { e.preventDefault(); send("shortcut", { name: e.shiftKey ? "prev_tab" : "next_tab" }); }
     else if (e.ctrlKey && (e.key === "t" || e.key === "T")) { e.preventDefault(); send("new_tab"); }
-    else if (e.ctrlKey && (e.key === "w" || e.key === "W")) { e.preventDefault(); send("close_tab", { index: S.active }); }
+    else if (e.ctrlKey && (e.key === "w" || e.key === "W")) { e.preventDefault(); if (!S.kiosk) send("close_tab", { index: S.active }); }
     else if (e.altKey && e.key >= "1" && e.key <= "4") { e.preventDefault(); send("shortcut", { name: "focus_pane", index: +e.key - 1 }); }
   });
   document.addEventListener("contextmenu", function (e) { if (e.target.tagName !== "INPUT") e.preventDefault(); });
@@ -415,9 +652,21 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
       S.catalogSig = JSON.stringify([S.apps.map(function (a) { return a.id + a.name + a.url + a.icon; }), S.shells.map(function (s) { return s.id + s.name; })]);
       document.documentElement.style.setProperty("--bar-h", S.barHeight + "px");
       document.documentElement.style.setProperty("--head-h", S.headerHeight + "px");
-      renderTabs(); renderLayouts(); renderPanes(); renderSettings();
-      document.title = (S.tabs[S.active] ? S.tabs[S.active].title + " – " : "") + "Brust";
+      document.body.classList.toggle("kiosk", !!S.kiosk);
+      $("settings").style.display = S.kiosk ? "none" : "";
+      if (!S.kiosk && kioskPrompt) kioskPrompt = false;
+      if (S.locked || S.confirm) { closePalette(true); }
+      renderTabs(); renderLayouts(); renderPanes(); renderSettings(); renderModal();
+      if ($("palette").classList.contains("show")) renderPalette();
     },
+    palette: function () { openPalette(); },
+    kioskExit: function () { if (S && S.kiosk) { kioskPrompt = true; send("overlay", { on: true }); renderModal(); } },
+    pinError: function (msg) {
+      var e = $("pinerr") || $("seterr");
+      if (e) e.textContent = msg;
+      var i = $("pinin"); if (i) { i.value = ""; i.focus(); }
+    },
+    auditLog: function (entries) { showAudit(entries); },
     toast: function (msg) {
       var t = $("toast"); t.textContent = msg; t.style.display = "block";
       clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.style.display = "none"; }, 6000);

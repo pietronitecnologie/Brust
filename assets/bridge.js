@@ -75,6 +75,15 @@
     if (e.ctrlKey && k === "Tab") { e.preventDefault(); post({ t: "shortcut", name: e.shiftKey ? "prev_tab" : "next_tab" }); return; }
     if (e.ctrlKey && !e.shiftKey && (k === "t" || k === "T")) { e.preventDefault(); post({ t: "shortcut", name: "new_tab" }); return; }
     if (e.altKey && k >= "1" && k <= "4") { e.preventDefault(); post({ t: "shortcut", name: "focus_pane", index: +k - 1 }); }
+    if (e.ctrlKey && !e.shiftKey && !e.altKey && (k === "k" || k === "K")) { e.preventDefault(); post({ t: "shortcut", name: "palette" }); return; }
+    if (e.ctrlKey && e.altKey && e.shiftKey && (k === "K" || k === "k")) { e.preventDefault(); post({ t: "shortcut", name: "kiosk_exit" }); return; }
+    if (e.ctrlKey && e.shiftKey && (k === "L" || k === "l")) { e.preventDefault(); post({ t: "shortcut", name: "lock" }); return; }
+    if (e.ctrlKey && e.shiftKey && (k === "S" || k === "s")) {
+      // Quick capture: selected text -> notes.
+      e.preventDefault();
+      var sel = String(window.getSelection ? window.getSelection() : "");
+      post({ t: "capture", text: sel, title: document.title, url: location.href });
+    }
   }, true);
   ["mousedown", "mouseup", "auxclick"].forEach(function (type) {
     window.addEventListener(type, function (e) {
@@ -82,6 +91,14 @@
     }, true);
   });
   window.addEventListener("pointerdown", function () { post({ t: "focus" }); }, true);
+  // Activity pings (at most every 20 s) for the idle auto-lock.
+  var lastPing = 0;
+  ["keydown", "pointerdown", "wheel"].forEach(function (type) {
+    window.addEventListener(type, function () {
+      var now = Date.now();
+      if (now - lastPing > 20000) { lastPing = now; post({ t: "activity" }); }
+    }, { capture: true, passive: true });
+  });
   window.addEventListener("focus", function () { post({ t: "focus" }); });
 
   window.brust = Object.freeze({

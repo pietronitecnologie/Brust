@@ -2,25 +2,37 @@
 name = "brust"
 version = "0.1.0"
 edition = "2024"
+license = "GPL-3.0-or-later"
 description = "Dedicated desktop client for web apps, with a bridge to local hardware/software, tabs and tiles."
 
 [dependencies]
 arboard = "3.7.0"
 base64 = "0.23.1"
+chrono = "0.4.45"
 directories = "6.0.0"
+ed25519-dalek = { version = "3.0.0", features = ["rand_core"] }
 env_logger = "0.11.12"
 log = "0.4.35"
+notify-rust = "4.19.0"
 open = "5.4.5"
 portable-pty = "0.9.0"
+rand_core = { version = "0.6", features = ["getrandom"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 serialport = { version = "4.10.1", default-features = false }
+sha2 = "0.11.1"
 tao = "0.37.3"
 tungstenite = "0.30.0"
+ureq = "3.5.2"
 wry = { version = "0.57.3", features = ["devtools"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"
+
+[target."cfg(windows)".dependencies]
+webview2-com = "0.39"
+windows = "0.62"
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_System_Console", "Win32_System_Memory"] }
 
 [profile.release]
 opt-level = 3

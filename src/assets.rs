@@ -9,6 +9,7 @@ pub const BRIDGE_JS: &str = include_str!("../assets/bridge.js");
 fn lookup(path: &str) -> Option<(&'static [u8], &'static str)> {
     Some(match path {
         "shell.html" => (include_bytes!("../assets/shell.html"), "text/html; charset=utf-8"),
+        "notes.html" => (include_bytes!("../assets/notes.html"), "text/html; charset=utf-8"),
         "terminal.html" => (include_bytes!("../assets/terminal.html"), "text/html; charset=utf-8"),
         "vendor/xterm.js" => (include_bytes!("../assets/vendor/xterm.js"), "text/javascript; charset=utf-8"),
         "vendor/xterm.css" => (include_bytes!("../assets/vendor/xterm.css"), "text/css; charset=utf-8"),

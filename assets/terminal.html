@@ -61,6 +61,9 @@
     if (e.ctrlKey && e.shiftKey && (e.key === "V" || e.key === "v")) { post({ t: "paste" }); return false; }
     if (e.ctrlKey && e.key === "Tab") { post({ t: "shortcut", name: e.shiftKey ? "prev_tab" : "next_tab" }); return false; }
     if (e.altKey && e.key >= "1" && e.key <= "4") { post({ t: "shortcut", name: "focus_pane", index: +e.key - 1 }); return false; }
+    if (e.ctrlKey && e.altKey && e.shiftKey && (e.key === "K" || e.key === "k")) { post({ t: "shortcut", name: "kiosk_exit" }); return false; }
+    if (e.ctrlKey && e.shiftKey && (e.key === "L" || e.key === "l")) { post({ t: "shortcut", name: "lock" }); return false; }
+    if (e.ctrlKey && e.shiftKey && (e.key === "K" || e.key === "k")) { post({ t: "shortcut", name: "palette" }); return false; }
     return true;
   });
 

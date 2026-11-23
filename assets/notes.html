@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notes</title>
+<style>
+:root {
+  --bg: #0f1115; --side: #15171c; --bar: #1b1e24; --panel: #20242b; --panel2: #262b33; --line: #2e333c;
+  --text: #d9dde4; --muted: #8b93a1; --faint: #5d6472; --accent: #5b8cff; --accent2: #3d6ae0; --danger: #e5566a;
+  --ok: #7fbf8a; --warn: #e0af68; --code: #171a20; --sel: #2d3f66;
+  --mono: "Cascadia Mono", "Cascadia Code", Consolas, "DejaVu Sans Mono", monospace;
+  --side-w: 220px; --head-h: 38px;
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); overflow: hidden; font-size: 13px; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+input, textarea { font: inherit; color: inherit; }
+::selection { background: var(--sel); }
+* { scrollbar-width: thin; scrollbar-color: #3a3f4b transparent; }
+svg { display: block; }
+
+/* Sidebar */
+#side { position: absolute; left: 0; top: 0; bottom: 0; width: var(--side-w); background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; z-index: 10; user-select: none; }
+#sidetop { padding: 8px 8px 6px; display: flex; gap: 6px; }
+.search { flex: 1; min-width: 0; position: relative; }
+.search svg { position: absolute; left: 8px; top: 8px; color: var(--faint); pointer-events: none; }
+#q { width: 100%; height: 28px; background: #0f1115; border: 1px solid var(--line); border-radius: 7px; padding: 0 24px 0 27px; outline: none; font-size: 12px; }
+#q:focus { border-color: var(--accent); }
+#q::placeholder { color: var(--faint); }
+#qclear { position: absolute; right: 4px; top: 5px; width: 18px; height: 18px; border-radius: 4px; color: var(--muted); display: none; place-items: center; }
+#qclear:hover { background: #2a2f37; color: var(--text); }
+.search.has #qclear { display: grid; }
+#sidehead { display: flex; align-items: center; padding: 6px 8px 4px 12px; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+#sidehead span { flex: 1; }
+#newbtn { height: 22px; padding: 0 8px; border-radius: 6px; color: var(--muted); font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; }
+#newbtn:hover { background: #263453; color: #cfdcff; }
+#list { flex: 1; overflow-y: auto; padding: 2px 6px 10px; }
+.nb { position: relative; display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 8px; border-radius: 7px; cursor: pointer; color: var(--text); }
+.nb:hover { background: #1f232a; }
+.nb.cur { background: #232a38; }
+.nb.cur::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: var(--accent); }
+.nb .ic { color: var(--faint); flex-shrink: 0; }
+.nb.cur .ic { color: var(--accent); }
+.nb .tx { flex: 1; min-width: 0; }
+.nb .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nb .mt { color: var(--faint); font-size: 11px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nb .acts { display: none; gap: 1px; flex-shrink: 0; }
+.nb:hover .acts, .nb.confirm .acts { display: flex; }
+.ib { width: 22px; height: 22px; border-radius: 5px; display: grid; place-items: center; color: var(--muted); }
+.ib:hover { background: #343b47; color: var(--text); }
+.ib.del:hover, .nb.confirm .ib.del { background: #4a2730; color: #ffb3bf; }
+.nb.confirm .ib.del { width: auto; padding: 0 6px; font-size: 11px; font-weight: 600; }
+.nb input, .newrow input { width: 100%; height: 24px; background: #0f1115; border: 1px solid var(--accent); border-radius: 5px; padding: 0 6px; outline: none; }
+.newrow { padding: 4px 6px 6px 8px; }
+.hint { color: var(--faint); font-size: 12px; padding: 10px 10px; line-height: 1.5; }
+.grp { color: var(--muted); font-size: 11px; font-weight: 600; padding: 8px 8px 3px; display: flex; gap: 6px; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.grp b { color: var(--faint); font-weight: 500; }
+.hit { display: flex; gap: 8px; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 12px; line-height: 1.4; }
+.hit:hover { background: #1f232a; }
+.hit .ln { color: var(--faint); font-family: var(--mono); font-size: 11px; min-width: 22px; text-align: right; padding-top: 1px; flex-shrink: 0; }
+.hit .ht { min-width: 0; color: #b9c0cc; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; }
+.hit mark { background: #3b4a2a; color: #e3f0c8; border-radius: 2px; padding: 0 1px; }
+
+/* Main */
+#main { position: absolute; left: var(--side-w); right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; min-width: 0; }
+body.side-collapsed #side { display: none; }
+body.side-collapsed #main { left: 0; }
+#head { height: var(--head-h); flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 6px; border-bottom: 1px solid var(--line); background: var(--bar); user-select: none; }
+#title { flex: 1; min-width: 0; font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#title small { color: var(--faint); font-weight: 400; margin-left: 4px; }
+.seg { display: flex; background: #14161a; border: 1px solid var(--line); border-radius: 7px; padding: 2px; flex-shrink: 0; }
+.seg button { height: 22px; padding: 0 10px; border-radius: 5px; color: var(--muted); font-size: 12px; }
+.seg button:hover { color: var(--text); }
+.seg button.on { background: #263453; color: #cfdcff; }
+#status { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; min-width: 64px; justify-content: flex-end; flex-shrink: 0; }
+#status i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: block; }
+#status.saving i { background: var(--warn); }
+#status.err i { background: var(--danger); }
+#err { display: none; align-items: center; gap: 8px; margin: 8px 12px 0; background: #3a1f25; border: 1px solid #6b2c38; color: #ffc2cc; padding: 6px 6px 6px 10px; border-radius: 8px; font-size: 12px; }
+#err.show { display: flex; }
+#err span { flex: 1; min-width: 0; }
+#err .ib { color: #ffc2cc; }
+#err .ib:hover { background: #5a2c36; }
+#body { flex: 1; position: relative; min-height: 0; }
+#ed { position: absolute; inset: 0; width: 100%; height: 100%; resize: none; border: 0; outline: none; background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px; line-height: 1.6; padding: 14px 18px 40vh; tab-size: 2; white-space: pre-wrap; overflow-wrap: anywhere; caret-color: var(--accent); }
+#ed::placeholder { color: var(--faint); }
+#ed:disabled { opacity: .5; }
+#mirror { position: absolute; visibility: hidden; pointer-events: none; left: 0; top: 0; font-family: var(--mono); font-size: 13px; line-height: 1.6; padding: 14px 18px; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 2; }
+#pv { position: absolute; inset: 0; overflow-y: auto; padding: 16px 22px 40vh; display: none; line-height: 1.6; font-size: 14px; user-select: text; overflow-wrap: anywhere; }
+body.preview #pv { display: block; }
+body.preview #ed { display: none; }
+
+/* Rendered Markdown */
+#pv > :first-child { margin-top: 0; }
+#pv h1, #pv h2, #pv h3, #pv h4, #pv h5, #pv h6 { margin: 1.3em 0 .5em; line-height: 1.3; font-weight: 650; color: #eef1f5; }
+#pv h1 { font-size: 1.7em; padding-bottom: .25em; border-bottom: 1px solid var(--line); }
+#pv h2 { font-size: 1.35em; padding-bottom: .2em; border-bottom: 1px solid #262a32; }
+#pv h3 { font-size: 1.15em; } #pv h4 { font-size: 1em; } #pv h5, #pv h6 { font-size: .9em; color: var(--muted); }
+#pv p { margin: .6em 0; }
+#pv a { color: #8fb0ff; text-decoration: none; border-bottom: 1px solid #3d5694; cursor: pointer; }
+#pv a:hover { color: #b5cbff; border-bottom-color: #8fb0ff; }
+#pv code { font-family: var(--mono); font-size: .86em; background: var(--code); border: 1px solid #262a32; padding: .08em .35em; border-radius: 4px; }
+#pv pre { background: var(--code); border: 1px solid #262a32; border-radius: 8px; padding: 10px 12px; overflow-x: auto; line-height: 1.5; }
+#pv pre code { background: none; border: 0; padding: 0; font-size: 12.5px; white-space: pre; }
+#pv blockquote { margin: .7em 0; padding: .1em 0 .1em 12px; border-left: 3px solid #3d4757; color: #aab2bf; }
+#pv hr { border: 0; border-top: 1px solid var(--line); margin: 1.4em 0; }
+#pv ul, #pv ol { margin: .5em 0; padding-left: 1.6em; }
+#pv li { margin: .15em 0; }
+#pv li > ul, #pv li > ol { margin: .1em 0; }
+#pv li.task { list-style: none; position: relative; }
+#pv li.task > input { position: absolute; left: -1.45em; top: .35em; margin: 0; width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; }
+#pv li.task.done > .tt { color: var(--faint); text-decoration: line-through; text-decoration-color: #5d6472; }
+#pv del { color: var(--muted); }
+#pv .empty { color: var(--faint); font-style: italic; }
+#pv .hl { animation: flash 1.4s ease-out; border-radius: 4px; }
+@keyframes flash { from { background: #3b4a2a; } to { background: transparent; } }
+
+/* Narrow panes: the sidebar becomes an overlay */
+#sidetoggle { flex-shrink: 0; }
+#scrim { display: none; }
+@media (max-width: 560px) {
+  body:not(.side-open) #side { display: none; }
+  body.side-open #side { display: flex; box-shadow: 8px 0 30px rgba(0,0,0,.45); }
+  body.side-open #scrim { display: block; position: absolute; inset: 0; z-index: 9; background: rgba(8,9,12,.5); }
+  #main, body.side-collapsed #main { left: 0; }
+  #status span { display: none; }
+  #status { min-width: 0; }
+}
+</style>
+</head>
+<body>
+<aside id="side">
+  <div id="sidetop">
+    <div class="search" id="searchbox">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="7" cy="7" r="4.8"/><path d="M10.6 10.6 14 14"/></svg>
+      <input id="q" type="text" placeholder="Search all notes" spellcheck="false" autocomplete="off">
+      <button id="qclear" title="Clear search (Esc)"><svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 2l6 6M8 2 2 8"/></svg></button>
+    </div>
+  </div>
+  <div id="sidehead"><span id="sidelabel">Notebooks</span><button id="newbtn" title="New notebook">+ New</button></div>
+  <div id="list"></div>
+</aside>
+<div id="scrim"></div>
+<main id="main">
+  <header id="head">
+    <button class="ib" id="sidetoggle" title="Toggle notebook list">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M6 3v10"/></svg>
+    </button>
+    <div id="title">Notes</div>
+    <div class="seg" role="tablist"><button id="mEdit" class="on" title="Edit (Ctrl+E)">Edit</button><button id="mPrev" title="Preview (Ctrl+E)">Preview</button></div>
+    <div id="status" title="Saved to disk"><i></i><span>Saved</span></div>
+  </header>
+  <div id="err"><span></span><button class="ib" id="errx" title="Dismiss"><svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 2l6 6M8 2 2 8"/></svg></button></div>
+  <div id="body">
+    <textarea id="ed" spellcheck="false" disabled placeholder="Loading…"></textarea>
+    <div id="mirror" aria-hidden="true"></div>
+    <div id="pv"></div>
+  </div>
+</main>
+<script>
+(function () {
+  "use strict";
+  function post(m) { try { window.ipc.postMessage(JSON.stringify(m)); } catch (e) {} }
+  function $(id) { return document.getElementById(id); }
+  var ed = $("ed"), pv = $("pv"), list = $("list"), q = $("q"), statusEl = $("status"), mirror = $("mirror");
+
+  var ICON_NB = '<svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M4 1.8h7.2L13 3.6v10.6H4z"/><path d="M6.3 6h4.4M6.3 8.6h4.4M6.3 11.2h2.6"/></svg>';
+  var ICON_REN = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M10.5 2.5l3 3L6 13H3v-3z"/></svg>';
+  var ICON_DEL = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4.5h11M6 4.5V2.8h4v1.7M4 4.5l.7 9h6.6l.7-9"/></svg>';
+
+  // ---- state ----
+  var cur = null;          // open notebook name
+  var notebooks = [];      // [{name, modified, size}]
+  var loaded = false;      // editor holds the content of `cur`
+  var editSeq = 0, sentSeq = 0, savedSeq = 0;
+  var saveTimer = 0, searchTimer = 0;
+  var pendingLine = 0;     // line to reveal after the next read
+  var pendingDelete = null;
+  var searchQ = "", results = null;
+  var mode = "edit";
+
+  function esc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  function validName(n) {
+    n = n.trim().replace(/\.md$/i, "").trim();
+    if (!n) return [null, "Name is empty"];
+    if (n.length > 80) return [null, "Name is longer than 80 characters"];
+    if (n === "." || n === ".." || n[0] === ".") return [null, "Name may not start with a dot"];
+    if (/[\x00-\x1f\x7f\/\\:*?"<>|]/.test(n)) return [null, "Name may not contain / \\ : * ? \" < > |"];
+    if (/[. ]$/.test(n)) return [null, "Name may not end with a dot or space"];
+    if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(n.split(".")[0].trim())) return [null, "\"" + n + "\" is a reserved name"];
+    return [n, null];
+  }
+
+  // ---- status / errors ----
+  var errTimer = 0;
+  function showError(msg) {
+    $("err").firstElementChild.textContent = msg;
+    $("err").classList.add("show");
+    clearTimeout(errTimer);
+    errTimer = setTimeout(hideError, 8000);
+    if (sentSeq > savedSeq) setStatus("err");
+  }
+  function hideError() { $("err").classList.remove("show"); }
+  function setStatus(s) {
+    statusEl.className = s === "saved" ? "" : s;
+    statusEl.lastElementChild.textContent = s === "saving" ? "Saving…" : s === "err" ? "Not saved" : "Saved";
+    statusEl.title = s === "saved" ? "Saved to disk" : s === "saving" ? "Saving to disk" : "The last change could not be saved";
+  }
+  function isDirty() { return editSeq !== savedSeq; }
+  function refreshStatus() { setStatus(isDirty() ? "saving" : "saved"); }
+
+  // ---- saving ----
+  function flush() {
+    clearTimeout(saveTimer); saveTimer = 0;
+    if (!loaded || cur == null || editSeq === sentSeq) return;
+    sentSeq = editSeq;
+    post({ t: "notes_write", name: cur, text: ed.value });
+  }
+  function changed() {
+    editSeq++;
+    setStatus("saving");
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(flush, 600);
+  }
+  function resetSeq() { clearTimeout(saveTimer); saveTimer = 0; editSeq = sentSeq = savedSeq = 0; }
+
+  // ---- opening ----
+  function setTitle() {
+    $("title").innerHTML = cur == null ? "Notes" : esc(cur) + "<small>.md</small>";
+    document.title = cur == null ? "Notes" : cur + " – Notes";
+  }
+  function openNotebook(name, line) {
+    if (name === cur && loaded) { if (line) revealLine(line); closeSideOverlay(); return; }
+    flush();
+    pendingLine = line || 0;
+    post({ t: "notes_open", name: name });
+    closeSideOverlay();
+  }
+  function onRead(m) {
+    var same = m.name === cur && loaded;
+    if (same && isDirty()) {
+      // A save is still pending for this notebook: keep the local buffer, it is newer.
+      return;
+    }
+    cur = m.name; loaded = true; resetSeq();
+    var ss = ed.selectionStart, se = ed.selectionEnd, st = ed.scrollTop;
+    ed.disabled = false;
+    ed.placeholder = "Start writing…  Markdown works: # heading, **bold**, - [ ] task, > quote, ```code```";
+    ed.value = m.text || "";
+    if (same) { ed.setSelectionRange(Math.min(ss, ed.value.length), Math.min(se, ed.value.length)); ed.scrollTop = st; }
+    else { ed.setSelectionRange(0, 0); ed.scrollTop = 0; }
+    setTitle(); setStatus("saved"); renderList();
+    if (mode === "preview") renderPreview();
+    if (pendingLine) { var l = pendingLine; pendingLine = 0; revealLine(l); }
+  }
+
+  // ---- sidebar ----
+  function fmtTime(ms) {
+    if (!ms) return "";
+    var d = new Date(ms), now = new Date(), diff = (now - d) / 1000;
+    if (diff < 60) return "just now";
+    if (diff < 3600) return Math.floor(diff / 60) + " min ago";
+    if (d.toDateString() === now.toDateString()) return "today " + d.toTimeString().slice(0, 5);
+    var y = new Date(now); y.setDate(now.getDate() - 1);
+    if (d.toDateString() === y.toDateString()) return "yesterday";
+    return d.toLocaleDateString(undefined, { year: d.getFullYear() === now.getFullYear() ? undefined : "numeric", month: "short", day: "numeric" });
+  }
+  function fmtSize(n) { return n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(n < 10240 ? 1 : 0) + " KB" : (n / 1048576).toFixed(1) + " MB"; }
+
+  function renderList() {
+    if (results) return renderResults();
+    $("sidelabel").textContent = "Notebooks";
+    var items = notebooks.slice();
+    if (cur != null && !items.some(function (x) { return x.name === cur; })) items.unshift({ name: cur, modified: 0, size: 0, unsaved: true });
+    var h = "";
+    items.forEach(function (nb) {
+      var meta = nb.unsaved ? "new" : (fmtTime(nb.modified) + (nb.size ? " · " + fmtSize(nb.size) : " · empty"));
+      h += '<div class="nb' + (nb.name === cur ? " cur" : "") + (nb.name === pendingDelete ? " confirm" : "") + '" data-name="' + esc(nb.name) + '">' + ICON_NB +
+        '<div class="tx"><div class="nm">' + esc(nb.name) + '</div><div class="mt">' + esc(meta) + '</div></div>' +
+        '<div class="acts"><button class="ib ren" title="Rename">' + ICON_REN + '</button>' +
+        '<button class="ib del" title="Delete">' + (nb.name === pendingDelete ? "Delete?" : ICON_DEL) + '</button></div></div>';
+    });
+    if (!items.length) h = '<div class="hint">No notebooks yet. Click <b>+ New</b> to create one.</div>';
+    list.innerHTML = h;
+  }
+
+  function highlight(text, query) {
+    var lt = text.toLowerCase(), lq = query.toLowerCase(), out = "", i = 0, j;
+    if (!lq) return esc(text);
+    while ((j = lt.indexOf(lq, i)) !== -1) {
+      out += esc(text.slice(i, j)) + "<mark>" + esc(text.slice(j, j + lq.length)) + "</mark>";
+      i = j + lq.length;
+    }
+    return out + esc(text.slice(i));
+  }
+  function renderResults() {
+    var n = results.length;
+    $("sidelabel").textContent = n ? (n >= 200 ? "200+ matches" : n + (n === 1 ? " match" : " matches")) : "Search";
+    if (!n) { list.innerHTML = '<div class="hint">No matches for “' + esc(searchQ) + '”.</div>'; return; }
+    var h = "", last = null;
+    results.forEach(function (r, i) {
+      if (r.name !== last) {
+        last = r.name;
+        h += '<div class="grp">' + ICON_NB + esc(r.name) + '</div>';
+      }
+      h += '<div class="hit" data-i="' + i + '"><span class="ln">' + (r.line | 0) + '</span><span class="ht">' + highlight(r.text || "", searchQ) + '</span></div>';
+    });
+    list.innerHTML = h;
+  }
+  function runSearch() {
+    var v = q.value.trim();
+    $("searchbox").classList.toggle("has", q.value !== "");
+    if (!v) { searchQ = ""; results = null; renderList(); return; }
+    flush();
+    post({ t: "notes_search", q: v });
+  }
+  function clearSearch() { q.value = ""; runSearch(); }
+
+  function startNew() {
+    if (results) clearSearch();
+    if (list.querySelector(".newrow")) { list.querySelector(".newrow input").focus(); return; }
+    var row = document.createElement("div");
+    row.className = "newrow";
+    row.innerHTML = '<input type="text" placeholder="Notebook name, Enter to create" maxlength="80" spellcheck="false">';
+    list.insertBefore(row, list.firstChild);
+    var inp = row.firstChild, done = false;
+    inp.focus();
+    function finish(ok) {
+      if (done) return; done = true;
+      var v = inp.value;
+      row.remove();
+      if (!ok || !v.trim()) return;
+      var r = validName(v);
+      if (!r[0]) return showError(r[1]);
+      if (notebooks.some(function (x) { return x.name.toLowerCase() === r[0].toLowerCase(); })) return openNotebook(r[0]);
+      flush();
+      post({ t: "notes_write", name: r[0], text: "" });
+      pendingLine = 0;
+      post({ t: "notes_open", name: r[0] });
+      post({ t: "notes_list" });
+      closeSideOverlay();
+      setTimeout(function () { ed.focus(); }, 0);
+    }
+    inp.addEventListener("keydown", function (e) {
+      e.stopPropagation();
+      if (e.key === "Enter") { e.preventDefault(); finish(true); }
+      else if (e.key === "Escape") { e.preventDefault(); finish(false); }
+    });
+    inp.addEventListener("blur", function () { finish(true); });
+  }
+
+  function startRename(el) {
+    var from = el.getAttribute("data-name"), tx = el.querySelector(".tx");
+    tx.innerHTML = '<input type="text" maxlength="80" spellcheck="false">';
+    var inp = tx.firstChild, done = false;
+    inp.value = from; inp.focus(); inp.select();
+    function finish(ok) {
+      if (done) return; done = true;
+      var v = inp.value.trim();
+      if (!ok || !v || v === from) return renderList();
+      var r = validName(v);
+      if (!r[0]) { renderList(); return showError(r[1]); }
+      if (from === cur) flush();
+      post({ t: "notes_rename", from: from, to: r[0] });
+      renderList();
+    }
+    inp.addEventListener("keydown", function (e) {
+      e.stopPropagation();
+      if (e.key === "Enter") { e.preventDefault(); finish(true); }
+      else if (e.key === "Escape") { e.preventDefault(); finish(false); }
+    });
+    inp.addEventListener("blur", function () { finish(true); });
+    inp.addEventListener("click", function (e) { e.stopPropagation(); });
+  }
+
+  var delTimer = 0, deletedCur = false;
+  list.addEventListener("click", function (e) {
+    var hit = e.target.closest(".hit");
+    if (hit) { var r = results[+hit.getAttribute("data-i")]; if (r) openNotebook(r.name, r.line | 0); return; }
+    var nb = e.target.closest(".nb");
+    if (!nb || e.target.closest("input")) return;
+    var name = nb.getAttribute("data-name");
+    if (e.target.closest(".ren")) return startRename(nb);
+    if (e.target.closest(".del")) {
+      if (pendingDelete === name) {
+        pendingDelete = null; clearTimeout(delTimer);
+        if (name === cur) { deletedCur = true; resetSeq(); }
+        post({ t: "notes_delete", name: name });
+        notebooks = notebooks.filter(function (x) { return x.name !== name; });
+      } else {
+        pendingDelete = name; clearTimeout(delTimer);
+        delTimer = setTimeout(function () { pendingDelete = null; renderList(); }, 3000);
+      }
+      return renderList();
+    }
+    openNotebook(name);
+  });
+  list.addEventListener("dblclick", function (e) {
+    var nb = e.target.closest(".nb");
+    if (nb && !e.target.closest(".acts") && !e.target.closest("input")) startRename(nb);
+  });
+  list.addEventListener("contextmenu", function (e) {
+    var nb = e.target.closest(".nb");
+    if (nb) { e.preventDefault(); startRename(nb); }
+  });
+
+  $("newbtn").addEventListener("click", startNew);
+  q.addEventListener("input", function () { clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 180); });
+  q.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { e.preventDefault(); clearSearch(); ed.focus(); }
+    else if (e.key === "Enter") { e.preventDefault(); clearTimeout(searchTimer); runSearch(); }
+    else if (e.key === "ArrowDown") { var f = results && results[0]; if (f) { e.preventDefault(); openNotebook(f.name, f.line | 0); } }
+  });
+  $("qclear").addEventListener("click", function () { clearSearch(); q.focus(); });
+
+  // ---- sidebar toggle ----
+  var narrowMq = window.matchMedia("(max-width: 560px)");
+  function closeSideOverlay() { document.body.classList.remove("side-open"); }
+  $("sidetoggle").addEventListener("click", function () {
+    if (narrowMq.matches) document.body.classList.toggle("side-open");
+    else document.body.classList.toggle("side-collapsed");
+  });
+  $("scrim").addEventListener("click", closeSideOverlay);
+
+  // ---- editor helpers ----
+  function lineStart(text, line) {
+    var pos = 0;
+    for (var i = 1; i < line; i++) { var n = text.indexOf("\n", pos); if (n === -1) return text.length; pos = n + 1; }
+    return pos;
+  }
+  function revealLine(line) {
+    setMode("edit");
+    var text = ed.value, s = lineStart(text, line), e = text.indexOf("\n", s);
+    if (e === -1) e = text.length;
+    ed.focus();
+    ed.setSelectionRange(s, e);
+    mirror.style.width = ed.clientWidth + "px";
+    mirror.textContent = text.slice(0, s) + "​";
+    var y = mirror.scrollHeight - parseFloat(getComputedStyle(ed).lineHeight) - 14;
+    ed.scrollTop = Math.max(0, y - ed.clientHeight / 3);
+  }
+  function insertText(s) {
+    // execCommand keeps native undo; fall back to setRangeText.
+    if (!document.execCommand || !document.execCommand("insertText", false, s)) {
+      ed.setRangeText(s, ed.selectionStart, ed.selectionEnd, "end");
+      changed();
+    }
+  }
+  ed.addEventListener("input", function () { if (loaded) changed(); });
+  ed.addEventListener("blur", flush);
+  ed.addEventListener("keydown", function (e) {
+    if (e.key === "Tab" && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      e.preventDefault();
+      if (!e.shiftKey) insertText("  ");
+      else {
+        var v = ed.value, ls = v.lastIndexOf("\n", ed.selectionStart - 1) + 1, n = v.slice(ls, ls + 2) === "  " ? 2 : v[ls] === " " ? 1 : 0;
+        if (n) { var a = ed.selectionStart, b = ed.selectionEnd; ed.setSelectionRange(ls, ls + n); insertText(""); ed.setSelectionRange(Math.max(ls, a - n), Math.max(ls, b - n)); }
+      }
+    } else if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.altKey && ed.selectionStart === ed.selectionEnd) {
+      var v2 = ed.value, p = ed.selectionStart, ls2 = v2.lastIndexOf("\n", p - 1) + 1, line = v2.slice(ls2, p);
+      var m = /^(\s*)([-*+]|\d+[.)])(\s+)(\[[ xX]\]\s+)?/.exec(line);
+      if (!m) { m = /^(\s*)(>)(\s?)/.exec(line); if (m) m[4] = ""; }
+      if (m) {
+        e.preventDefault();
+        if (line.length === m[0].length && v2.slice(p, v2.indexOf("\n", p) === -1 ? v2.length : v2.indexOf("\n", p)).trim() === "") {
+          ed.setSelectionRange(ls2, p); insertText(""); // empty item ends the list
+        } else {
+          var bullet = /^\d+/.test(m[2]) ? (parseInt(m[2], 10) + 1) + m[2].replace(/^\d+/, "") : m[2];
+          insertText("\n" + m[1] + bullet + m[3] + (m[4] ? "[ ] " : ""));
+        }
+      }
+    }
+  });
+
+  // ---- Markdown ----
+  function safeUrl(u) {
+    u = u.replace(/&amp;/g, "&").trim();
+    if (/^(https?:|mailto:)/i.test(u)) return u;
+    if (/^www\./i.test(u)) return "https://" + u;
+    return null;
+  }
+  function inline(s) {
+    // `s` is already HTML-escaped.
+    var slots = [];
+    function slot(h) { slots.push(h); return "\u0000" + (slots.length - 1) + "\u0000"; }
+    s = s.replace(/(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/g, function (_, t, c) { return slot("<code>" + c.trim() + "</code>"); });
+    function link(label, url) {
+      var u = safeUrl(url);
+      if (!u) return slot('<span title="Blocked link">' + label + "</span>");
+      return slot('<a data-href="' + esc(u) + '" title="' + esc(u) + '">' + label + "</a>");
+    }
+    s = s.replace(/!?\[([^\]\n]*)\]\(\s*((?:[^()\s]|\([^()\s]*\))+)(?:\s+&quot;[^)]*&quot;)?\s*\)/g, function (_, l, u) { return link(fmt(l || u), u); });
+    s = s.replace(/&lt;((?:https?:\/\/|mailto:)[^\s&]+(?:&amp;[^\s&]+)*)&gt;/gi, function (_, u) { return link(u, u); });
+    s = s.replace(/(^|[\s(])((?:https?:\/\/|www\.)(?:(?!&(?:quot|lt|gt|#39);)[^\s<\u0000])+)/gi, function (_, pre, u) {
+      var tail = /(?:[.,:;!?)']|&amp;)+$/.exec(u), t = tail ? tail[0] : "";
+      if (t) u = u.slice(0, -t.length);
+      return u.length > 8 ? pre + link(u, u) + t : _;
+    });
+    s = fmt(s);
+    return s.replace(/\u0000(\d+)\u0000/g, function (_, i) { return slots[+i]; });
+  }
+  function fmt(s) {
+    return s
+      .replace(/\*\*(?=\S)([\s\S]*?\S)\*\*/g, "<strong>$1</strong>")
+      .replace(/(^|[^\w])__(?=\S)([\s\S]*?\S)__(?!\w)/g, "$1<strong>$2</strong>")
+      .replace(/(^|[^*])\*(?=[^\s*])([^*]*?[^\s*])\*(?!\*)/g, "$1<em>$2</em>")
+      .replace(/(^|[^\w])_(?=[^\s_])([^_]*?[^\s_])_(?!\w)/g, "$1<em>$2</em>")
+      .replace(/~~(?=\S)([\s\S]*?\S)~~/g, "<del>$1</del>");
+  }
+
+  function render(src) {
+    var lines = esc(src.replace(/\r\n?/g, "\n")).split("\n");
+    var out = [], i = 0, para = [], quote = null;
+    var stack = []; // open lists: {type, indent}
+    function closePara() { if (para.length) { out.push("<p>" + para.map(inline).join("<br>") + "</p>"); para = []; } }
+    function closeLists(indent) {
+      while (stack.length && (indent == null || stack[stack.length - 1].indent > indent)) {
+        out.push("</li></" + stack.pop().type + ">");
+      }
+    }
+    function closeQuote() { if (quote) { var q2 = quote; quote = null; out.push("<blockquote>" + render(unesc(q2.join("\n"))) + "</blockquote>"); } }
+    function closeAll() { closePara(); closeLists(); closeQuote(); }
+    for (; i < lines.length; i++) {
+      var ln = lines[i], m;
+      if (quote && !/^\s{0,3}&gt;/.test(ln)) {
+        if (ln.trim() && !/^\s*$/.test(lines[i - 1] || "")) { quote.push(ln); continue; } // lazy continuation
+        closeQuote();
+      }
+      if ((m = /^(\s*)(`{3,}|~{3,})\s*([\w+#.-]*)/.exec(ln))) {
+        closePara(); closeLists(); closeQuote();
+        var fence = m[2], code = [];
+        for (i++; i < lines.length && !(lines[i].trim().indexOf(fence) === 0 && lines[i].trim().replace(/[`~]/g, "") === ""); i++) code.push(lines[i]);
+        out.push('<pre><code' + (m[3] ? ' data-lang="' + m[3] + '"' : "") + ">" + code.join("\n") + "</code></pre>");
+        continue;
+      }
+      if (/^\s*$/.test(ln)) {
+        closePara();
+        // a blank line inside a list keeps it open if the next line continues it
+        var nx = lines[i + 1] || "";
+        if (stack.length && /^\s*([-*+]|\d+[.)])\s+/.test(nx)) continue;
+        closeLists(); continue;
+      }
+      if ((m = /^\s{0,3}&gt;\s?(.*)$/.exec(ln))) {
+        closePara(); closeLists();
+        (quote = quote || []).push(m[1]);
+        continue;
+      }
+      if ((m = /^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/.exec(ln))) {
+        closeAll();
+        out.push("<h" + m[1].length + ">" + inline(m[2]) + "</h" + m[1].length + ">");
+        continue;
+      }
+      if (/^\s{0,3}([-*_])(\s*\1){2,}\s*$/.test(ln)) { closeAll(); out.push("<hr>"); continue; }
+      if ((m = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/.exec(ln))) {
+        closePara(); closeQuote();
+        var indent = m[1].replace(/\t/g, "  ").length, type = /\d/.test(m[2]) ? "ol" : "ul", body = m[3];
+        var top = stack[stack.length - 1];
+        if (top && indent < top.indent) { closeLists(indent); top = stack[stack.length - 1]; }
+        if (top && indent <= top.indent + 1 && top.type === type) out.push("</li>");
+        else if (top && indent <= top.indent + 1) { out.push("</li></" + stack.pop().type + ">"); top = null; }
+        if (!top || indent > top.indent + 1) {
+          var start = type === "ol" && parseInt(m[2], 10) !== 1 ? ' start="' + parseInt(m[2], 10) + '"' : "";
+          out.push("<" + type + start + ">");
+          stack.push({ type: type, indent: indent });
+        }
+        var t = /^\[([ xX])\]\s+(.*)$/.exec(body);
+        if (t) {
+          var done = t[1] !== " ";
+          out.push('<li class="task' + (done ? " done" : "") + '"><input type="checkbox" data-line="' + i + '"' + (done ? " checked" : "") + '><span class="tt">' + inline(t[2]) + "</span>");
+        } else out.push("<li>" + inline(body));
+        continue;
+      }
+      if (stack.length && /^\s+\S/.test(ln)) { out.push("<br>" + inline(ln.trim())); continue; } // continuation of an item
+      closeLists();
+      para.push(ln.trim());
+    }
+    closeAll();
+    return out.join("\n");
+  }
+  function unesc(s) { return s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&"); }
+
+  function renderPreview() {
+    var html = render(ed.value);
+    pv.innerHTML = html.trim() ? html : '<p class="empty">Nothing here yet. Switch to Edit to start writing.</p>';
+    // Checkbox line numbers inside blockquotes are relative to the quote, so those stay read-only.
+    pv.querySelectorAll("blockquote input[type=checkbox]").forEach(function (c) { c.disabled = true; });
+  }
+  pv.addEventListener("click", function (e) {
+    var a = e.target.closest("a[data-href]");
+    if (a) { e.preventDefault(); post({ t: "open_link", url: a.getAttribute("data-href") }); return; }
+    var cb = e.target.closest("input[type=checkbox][data-line]");
+    if (cb && !cb.disabled) {
+      var idx = +cb.getAttribute("data-line"), lines = ed.value.split("\n"), l = lines[idx];
+      if (l == null) return;
+      var nl = l.replace(/^(\s*(?:[-*+]|\d+[.)])\s+)\[([ xX])\]/, function (_, p, c) { return p + (c === " " ? "[x]" : "[ ]"); });
+      if (nl === l) return;
+      lines[idx] = nl;
+      var st = pv.scrollTop;
+      ed.value = lines.join("\n");
+      changed();
+      renderPreview();
+      pv.scrollTop = st;
+    }
+  });
+
+  function setMode(m) {
+    if (m === mode) return;
+    mode = m;
+    $("mEdit").classList.toggle("on", m === "edit");
+    $("mPrev").classList.toggle("on", m === "preview");
+    document.body.classList.toggle("preview", m === "preview");
+    if (m === "preview") { flush(); renderPreview(); pv.scrollTop = 0; }
+    else if (loaded) ed.focus();
+  }
+  $("mEdit").addEventListener("click", function () { setMode("edit"); });
+  $("mPrev").addEventListener("click", function () { setMode("preview"); });
+  $("errx").addEventListener("click", hideError);
+
+  // ---- keyboard ----
+  document.addEventListener("keydown", function (e) {
+    var k = e.key;
+    if (e.ctrlKey && !e.altKey && (k === "s" || k === "S")) { e.preventDefault(); flush(); if (!isDirty()) setStatus("saved"); return; }
+    if (e.ctrlKey && k === "Tab") { e.preventDefault(); post({ t: "shortcut", name: e.shiftKey ? "prev_tab" : "next_tab" }); return; }
+    if (e.altKey && !e.ctrlKey && k >= "1" && k <= "4") { e.preventDefault(); post({ t: "shortcut", name: "focus_pane", index: +k - 1 }); return; }
+    if (e.ctrlKey && !e.shiftKey && !e.altKey && (k === "k" || k === "K")) { e.preventDefault(); post({ t: "shortcut", name: "palette" }); return; }
+    if (k === "F5") { e.preventDefault(); flush(); post({ t: "shortcut", name: "reload_tab" }); return; }
+    if (e.ctrlKey && !e.altKey && (k === "e" || k === "E")) { e.preventDefault(); setMode(mode === "edit" ? "preview" : "edit"); return; }
+    if (e.ctrlKey && e.shiftKey && (k === "f" || k === "F")) { e.preventDefault(); document.body.classList.remove("side-collapsed"); if (narrowMq.matches) document.body.classList.add("side-open"); q.focus(); q.select(); return; }
+  }, true);
+  window.addEventListener("pointerdown", function () { post({ t: "focus" }); }, true);
+  window.addEventListener("pagehide", flush);
+  document.addEventListener("visibilitychange", function () { if (document.hidden) flush(); });
+
+  // ---- host -> page ----
+  window.__notes = function (m) {
+    if (!m || !m.kind) return;
+    switch (m.kind) {
+      case "init":
+        notebooks = m.list || [];
+        var first = m.notebook || (notebooks[0] && notebooks[0].name) || "Inbox";
+        if (m.notebook) { cur = first; loaded = false; setTitle(); post({ t: "notes_read", name: first }); }
+        else post({ t: "notes_open", name: first });
+        renderList();
+        break;
+      case "read":
+        onRead(m);
+        break;
+      case "saved":
+        if (m.name === cur) { savedSeq = sentSeq; refreshStatus(); }
+        break;
+      case "list":
+        notebooks = m.list || [];
+        if (deletedCur && cur != null && !notebooks.some(function (x) { return x.name === cur; })) {
+          deletedCur = false; loaded = false;
+          var next = notebooks[0] ? notebooks[0].name : "Inbox";
+          cur = null; ed.value = ""; setTitle();
+          post({ t: "notes_open", name: next });
+        }
+        renderList();
+        break;
+      case "search":
+        if (m.q !== q.value.trim()) break; // stale
+        searchQ = m.q; results = m.results || [];
+        renderResults();
+        break;
+      case "append":
+        if (m.name === cur && loaded) {
+          var ss = ed.selectionStart, se = ed.selectionEnd, st = ed.scrollTop, focused = document.activeElement === ed;
+          ed.value += m.text || "";
+          ed.setSelectionRange(ss, se);
+          ed.scrollTop = st;
+          if (focused) ed.focus();
+          if (isDirty()) changed(); // the pending save must include the captured text
+          if (mode === "preview") { var ps = pv.scrollTop; renderPreview(); pv.scrollTop = ps; }
+        }
+        post({ t: "notes_list" });
+        break;
+      case "error":
+        showError(m.message || "Something went wrong");
+        break;
+    }
+  };
+  window.__notes_focus = function () {
+    if (mode === "edit" && !ed.disabled) ed.focus(); else pv.focus();
+  };
+
+  renderList();
+  post({ t: "notes_init" });
+})();
+</script>
+</body>
+</html>

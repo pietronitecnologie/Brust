@@ -22,7 +22,7 @@ Brust routes messages based on that name. There are three message types:
 
 | Type | What it is for | Web app | Local software |
 |---|---|---|---|
-| **Local command** (`invoke`) | Brust itself performs an action on the PC: processes, files, serial, clipboard | `brust.invoke("fs.read", …)` | — |
+| **Local command** (`invoke`) | Brust itself performs an action on the PC: processes, files, serial, clipboard, notes, printing | `brust.invoke("fs.read", …)` | — |
 | **Call** (`call`) | Request → **one** reply (or error). For "do this and tell me how it went" | `brust.call(name, method, params)` · `brust.handle(method, fn)` | receives `{"type":"call"}` → replies `{"type":"reply"}`; sends `{"type":"call"}` → receives `{"type":"result"}` |
 | **Event** (`emit`/`on`) | Notification with no reply: progress, state changes, alarms | `brust.emit(event, data, target)` · `brust.on(event, fn)` | sends `{"type":"emit"}` · receives `{"type":"event"}` |
 
@@ -132,10 +132,16 @@ export async function startTest(code, onProgress) {
 4. **Correlation identifiers.** Include an id from your domain in the parameters (part code,
    order id) and filter events by it, as in the example: several tabs may be open.
 5. **Minimal permissions** in `config.json`. `messaging` is often enough. `exec`/`fs` only if needed,
-   with tight `exec_allow` and `fs_roots`.
-6. **Incoming commands with `brust.handle`.** Always validate the parameters: they come from another
+   with tight `exec_allow` and `fs_roots`. `notes` and `print` are separate permissions.
+6. **Expect the confirmation dialog.** `shell.exec`, `shell.open`, `fs.write`, `fs.remove`, `fs.mkdir`,
+   `serial.open` and `print.file` wait until the user answers (unless `privacy.confirm_sensitive` /
+   the app's `confirm` is `false`, or the user chose "Always allow"). A refusal rejects the Promise
+   with `denied by the user`: show it as a normal, recoverable error. Don't put a short
+   `timeout_ms` on these calls, and group writes (one `fs.write` of a whole file instead of many
+   small ones) so the user is not asked repeatedly.
+7. **Incoming commands with `brust.handle`.** Always validate the parameters: they come from another
    program.
-7. **Existing apps that cannot be modified** are adapted with `inject_script`. It is a local JS
+8. **Existing apps that cannot be modified** are adapted with `inject_script`. It is a local JS
    file injected into the pages, which can read the DOM, add buttons and call `brust`.
 
 ### 3.3 When to use what
@@ -148,6 +154,53 @@ export async function startTest(code, onProgress) {
 | Two web apps working together (Ordo ↔ Metodo) | `brust.handle` in one, `brust.call` in the other |
 | Notify several recipients | `brust.emit(event, data, "*")` |
 | Read/write exchange files with other programs | `fs.*` (`fs` permission + `fs_roots`) |
+| Keep a log or a note the operator can read and edit | `notes.append` (`notes` permission) |
+| Print a label, a report or the current page | `print.page`, `print.file` (`print` permission) |
+| Show that something needs attention | `ui.badge` + `ui.notify` with `native: true` |
+
+### 3.4 Notes, badges, notifications and printing
+
+```js
+// Append to a notebook (Markdown, "notes" permission). The default notebook is "Inbox".
+await brust.invoke("notes.append", { notebook: "Test log", text: `- ${new Date().toISOString()} PZ-001: OK` });
+const nbs = await brust.invoke("notes.list");                 // [{name, modified, size}]
+const text = await brust.invoke("notes.read", { notebook: "Test log" });
+
+// Counter on the pane header/tab and in the window title; 0 removes it.
+await brust.invoke("ui.badge", { count: pendingOrders.length });
+// Toast in Brust; native desktop notification if the window is not focused or native: true.
+await brust.invoke("ui.notify", { title: "Ordo", message: "New order 12", native: true });
+
+// Printing ("print" permission)
+const printers = await brust.invoke("print.list");            // [{name, default}]
+await brust.invoke("print.page", { printer: "Office", silent: true });
+await brust.invoke("print.file", { path: "C:\\Exchange\\Ordo\\label.pdf", printer: "Zebra" });
+```
+
+* Notebook names are file names (`<name>.md` in the notes folder): avoid `/ \ : * ? " < > |`, a leading
+  dot and names longer than 80 characters. The text is appended as is (a final newline is added if missing),
+  so write complete Markdown lines. The notes pane showing that notebook updates immediately.
+* `print.page` prints the page as rendered: use a print stylesheet (`@media print`) to hide the
+  app's chrome. Silent printing works on Windows; on Linux/macOS the dialog opens, so don't assume
+  the job is finished when the Promise resolves. Without `printer`, `default_printer` from
+  `config.json` (or the system default) is used.
+* `print.file` is sensitive (confirmation) and the file must be inside `fs_roots`; it is printed by
+  the application associated with the file type (Windows) or by `lp` (CUPS). Generate the file
+  (e.g. a PDF) with `fs.write` first, or let local software produce it.
+* With the JS SDK (`sdk/js/brust.js`) the same calls are `notes.append(text, notebook)`,
+  `ui.badge(count)`, `ui.notify(message, title)`, `print.printers()`, `print.page(opts)`.
+
+### 3.5 Profiles, logins and private pages
+
+* Each app has its **own browser profile** by default (`isolated: true`): cookies and storage are
+  not shared between apps. With a common SSO the user logs in once per app; if the apps must share
+  the login, set `"isolated": false` on them (they then share one profile).
+* `incognito: true` and `clear_on_exit: true` mean the app often starts logged out: keep the login
+  flow fast and don't rely on `localStorage` surviving a restart.
+* Camera, microphone, location and screen capture are denied unless the app lists them in
+  `web_permissions` (e.g. `{"camera": "allow"}` for a barcode scanner using the webcam).
+* With tracker blocking on, third-party scripts on the blocked lists fail to load: test the app
+  with `privacy.block_trackers: true`, and add the app's own CDNs to `privacy.allow_domains` if needed.
 
 ## 4. Structuring the local software
 
@@ -177,7 +230,8 @@ local-software/
 * **Versioning.** Include `v` in the parameters (`{"v":1,…}`) and reject unknown versions.
   Add fields without breaking existing ones.
 * **Keep the token out of the code.** Read it from a configuration file or an environment variable.
-  The token is in Brust → ⚙ Settings (also in `config.json` → `bridge.token`).
+  The token is in Brust → ⚙ Settings. It is generated and stored encrypted (`bridge-token.dat`)
+  unless you set a fixed one in `config.json` → `bridge.token` (useful when it is distributed to many PCs).
 
 ### 4.2 Message reference, software side
 
@@ -185,10 +239,11 @@ Connection: `ws://127.0.0.1:47800/?token=TOKEN&name=NAME`
 
 | Received by the software | Meaning |
 |---|---|
-| `{"type":"welcome","client":3,"apps":[…]}` | connection accepted |
+| `{"type":"welcome","client":3,"version":"0.1.0","apps":[…]}` | connection accepted |
 | `{"type":"call","id":7,"method":"…","params":{…},"from":"ordo"}` | an app is asking for something: answer with `reply` |
 | `{"type":"event","event":"…","data":{…},"source":"ordo"}` | event emitted by an app to external software or `"*"` |
 | `{"type":"result","id":…,"ok":…,"result"/"error":…}` | reply to one of your `call`, `list`, `emit`, `open`, … |
+| `{"type":"pong","id":…}` | reply to `ping` |
 
 | Sent by the software | Meaning |
 |---|---|
@@ -197,12 +252,30 @@ Connection: `ws://127.0.0.1:47800/?token=TOKEN&name=NAME`
 | `{"type":"call","id":1,"target":"ordo","method":"…","params":{…}}` | calls a method an app registered with `brust.handle` |
 | `{"type":"open","app":"metodo"}`, `{"type":"focus","app":"ordo"}` | opens an app or brings it to the front |
 | `{"type":"list","id":2}` | tabs, panes and configured apps |
+| `{"type":"open_template","id":3,"name":"Testing"}` | opens a template in a new tab |
+| `{"type":"notes_append","id":4,"notebook":"Test log","text":"…"}` | appends to a notebook (default `Inbox`); recorded in the activity log |
+| `{"type":"cli","id":5,"args":["--open","ordo"]}` | same as the command line (`--open`, `--url`, `--template`, `--notes`, `brust://…`) and brings Brust to the front |
+| `{"type":"reload"}`, `{"type":"ping","id":6}` | reloads the active tab; connection check |
 
-### 4.3 Other languages
+`notes_append` is useful for a readable trace of what the software did (e.g. one line per test),
+which the operator can find in the notes without opening a log file.
+### 4.3 SDKs and other languages
+
+`sdk/` contains ready-made clients (see `sdk/README.md`):
+
+| SDK | For | Status |
+|---|---|---|
+| `sdk/js/brust.js` (+ `brust.d.ts`) | web apps: wraps `window.brust`, works outside Brust too | smoke-tested |
+| `sdk/python/brust_client.py` | local software (`websockets`) | tested |
+| `sdk/node/brust-client.mjs` | local software (Node ≥ 22, no dependencies) | tested |
+| `sdk/csharp/BrustClient.cs` | local software (.NET 6+) | **not compiled** |
+
+They implement the rules of 4.1: method table, exactly one reply, handlers in parallel,
+reconnection with backoff, the token from `BRUST_TOKEN`. Prefer them to a hand-written client.
 
 Any language with a WebSocket client will do. The pattern is always the same: connect,
-read in a loop, dispatch on `type`, answer with `reply`. The C#/.NET skeleton below is a
-starting point and **has not been compiled**.
+read in a loop, dispatch on `type`, answer with `reply`. The minimal C#/.NET skeleton below
+shows the pattern and **has not been compiled** (the full client is `sdk/csharp/BrustClient.cs`).
 
 ```csharp
 using System.Net.WebSockets; using System.Text; using System.Text.Json; using System.Text.Json.Nodes;
@@ -229,7 +302,83 @@ while (ws.State == WebSocketState.Open) {
 
 A working PowerShell client-side example is in `examples/external_client.ps1`.
 
-## 5. Recommended conventions
+## 5. Deploying to many PCs
+
+### 5.1 Links and command line
+
+Other programs can open Brust where it is needed: `brust --open ordo --url https://…/orders/12`,
+`brust --template "Line 1"`, or a link `brust://open?app=ordo&url=https%3A%2F%2F…` (URL-encode the
+values; `brust://` is registered for the current user on Windows when `register_protocol` is `true`).
+If Brust is already running, the request is forwarded to it (via the WebSocket bridge, which must be
+enabled) instead of starting a second instance. Local software that is already connected can send
+`{"type":"cli","args":[…]}` instead.
+
+### 5.2 Signed central configuration
+
+1. Once, on an admin PC: `brust --keygen C:\BrustKeys`. Keep `brust-private.key` secret
+   (outside the share, ideally offline); `brust-public.key` goes into every client.
+2. Write the central part of the configuration, e.g. `central.json`:
+
+   ```json
+   {
+     "apps": [
+       { "id": "ordo", "name": "Ordo", "url": "https://ordo.mydomain.com", "permissions": ["messaging", "notes", "print"] }
+     ],
+     "privacy": { "block_trackers": true, "confirm_sensitive": true, "audit_log": true, "lock_after_minutes": 15 },
+     "default_printer": "Office"
+   }
+   ```
+
+3. Sign it: `brust --sign central.json --key C:\BrustKeys\brust-private.key --out \\server\brust\config.signed.json`.
+   Check it with `brust --verify \\server\brust\config.signed.json --pubkey C:\BrustKeys\brust-public.key`.
+4. On each client, `config.json` only needs the pointer (plus any local keys):
+
+   ```json
+   { "remote_config": { "url": "\\\\server\\brust\\config.signed.json", "public_key": "<content of brust-public.key>", "refresh_minutes": 60 } }
+   ```
+
+Rules: every **top-level key** in the central file replaces the local one entirely (a central
+`"apps"` replaces all local apps; keys absent from the central file stay local); `remote_config`
+cannot be changed centrally. A file with a wrong signature is ignored and the last verified copy
+(cached in `remote-config.cache.json`) stays in use, also when the server is unreachable. Changes
+to `bridge` apply at the next launch; open panes keep their settings until reopened. The `url` can
+be `https://…`, `file://…` or a local/UNC path.
+
+### 5.3 Signed updates
+
+1. Build or obtain the new `brust.exe` and compute its hash: `brust --hash-file brust.exe`
+   (or `Get-FileHash -Algorithm SHA256 brust.exe`).
+2. Publish the executable and write `manifest.json`:
+
+   ```json
+   { "version": "0.2.0", "url": "https://intranet.example.com/brust/0.2.0/brust.exe", "sha256": "<hex>", "notes": "Fixes printing on line 2" }
+   ```
+
+3. Sign it: `brust --sign manifest.json --key brust-private.key --out manifest.signed.json` and
+   publish it at the `manifest_url` of the clients:
+
+   ```json
+   { "update": { "manifest_url": "https://intranet.example.com/brust/manifest.signed.json", "public_key": "<base64>", "check_on_start": true } }
+   ```
+
+The client installs only if `version` is greater than its own (numeric comparison, a leading `v` is
+allowed) and the downloaded file matches `sha256`. The user confirms with Settings → *Install … and
+restart*; the old executable stays next to it as `brust.exe.old` until the next start (if the
+replacement fails, the old one is put back). The `update` section can itself be distributed with the central
+configuration. The update replaces only the executable.
+
+On Windows these commands print into the terminal they are started from (PowerShell or cmd).
+
+### 5.4 Kiosk PCs
+
+For shared terminals on the shop floor: save the tileset as a template (Settings → Templates), set a
+PIN (Settings → Privacy) **before** enabling kiosk mode, then
+`"kiosk": {"enabled": true, "template": "Line 1"}`. Brust starts full screen with that template and
+the tab structure, layouts, settings and developer tools are locked; Ctrl+Alt+Shift+K + PIN
+leaves kiosk mode until the next launch. Kiosk mode and the PIN screen are a convenience, not an OS
+lockdown: combine them with a restricted Windows account.
+
+## 6. Recommended conventions
 
 * **Events**: `domain.action`, in the past tense or progressive form: `test.progress`, `test.completed`,
   `order.saved`, `scale.weight`.
@@ -239,7 +388,7 @@ A working PowerShell client-side example is in `examples/external_client.ps1`.
   `"error":"BUSY: test already running"`.
 * **Document the contract** of each program (methods, parameters, events) in a file next to the code.
 
-## 6. Testing and troubleshooting
+## 7. Testing and troubleshooting
 
 * `examples/demo.html` + `examples/tester.py`: a complete run of the example flow
   (`python -m http.server 3000` in the `examples` folder, app with url `http://localhost:3000/demo.html`).
@@ -250,12 +399,20 @@ A working PowerShell client-side example is in `examples/external_client.ps1`.
 wscat -c "ws://127.0.0.1:47800/?token=TOKEN&name=tester"
 ```
 
-## 7. Checklist
+* Settings → Privacy → *Activity log* shows which commands an app invoked and whether they were
+  allowed, confirmed, denied or refused (missing permission); the full file is `audit.log` in the
+  data folder. An error `'X' permission not granted to the app` means `permissions` lacks `X`.
+* SDK tests: `python3 -m pytest -q sdk/python`, `node sdk/node/test.mjs`.
+
+## 8. Checklist
 
 - [ ] App in `config.json` with `id`, `url`, any `allowed_origins` and only the permissions it needs
 - [ ] Web app: a single integration module, also works outside Brust
 - [ ] Web app: buttons tied to the software's availability (`bridge.clients` + events)
 - [ ] Web app: `timeout_ms`, error handling, correlation ids in events
+- [ ] Web app: handles `denied by the user` on sensitive commands; tested with tracker blocking on
+- [ ] Apps sharing an SSO login: decide on `isolated`; devices (camera, …) in `web_permissions`
 - [ ] Software: stable name, reconnection, token from configuration
 - [ ] Software: method table, always one `reply`, long work async, "busy" handling
 - [ ] Contract (methods, parameters, events, version) documented
+- [ ] Fleet: private key kept safe, central configuration and manifest signed and verified with `--verify`

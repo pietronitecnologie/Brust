@@ -11,6 +11,10 @@
   <button id="clip">clipboard.read</button>
   <button id="serial">serial.list</button>
   <button id="test">▶ Start test (local software "tester")</button>
+  <button id="badge">ui.badge +1</button>
+  <button id="notify">ui.notify</button>
+  <button id="note">notes.append</button>
+  <button id="printers">print.list</button>
 </div>
 <pre id="log"></pre>
 <script>
@@ -28,6 +32,11 @@ window.addEventListener('brust:ready', () => {
   exec.onclick = () => run(() => p.exec(navigator.platform.startsWith('Win') ? 'cmd' : 'uname', navigator.platform.startsWith('Win') ? ['/c','ver'] : ['-a']));
   clip.onclick = () => run(() => p.invoke('clipboard.read'));
   serial.onclick = () => run(() => p.invoke('serial.list'));
+  let unread = 0;
+  badge.onclick = () => run(() => p.invoke('ui.badge', { count: ++unread }));
+  notify.onclick = () => run(() => p.invoke('ui.notify', { message: 'Test finished: OK', native: true }));
+  note.onclick = () => run(() => p.invoke('notes.append', { notebook: 'Test log', text: '- ' + new Date().toISOString() + ' test PZ-001: OK' }));
+  printers.onclick = () => run(() => p.invoke('print.list'));
   // Full flow: web app → client → local software → client → web app
   p.on('test.progress', d => log('progress', d.percent + '%', d.step));
   test.onclick = async () => {

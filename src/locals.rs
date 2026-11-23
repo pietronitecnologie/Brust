@@ -26,6 +26,7 @@ pub fn permission_for(cmd: &str) -> Option<&'static str> {
         "fs.read" | "fs.write" | "fs.list" | "fs.exists" | "fs.mkdir" | "fs.remove" => "fs",
         "clipboard.read" | "clipboard.write" => "clipboard",
         "serial.list" | "serial.open" | "serial.write" | "serial.close" => "serial",
+        "print.list" | "print.file" => "print",
         _ => return None,
     })
 }
@@ -173,14 +174,19 @@ impl Locals {
                 e.port.write_all(&data).map_err(|e| e.to_string())?;
                 Ok(json!(data.len()))
             }
+            "print.list" => crate::print::list_printers().map(Value::Array),
+            "print.file" => {
+                let p = check_path(app, s(args, "path")?, false)?;
+                crate::print::print_file(&p, opt_s(args, "printer"))?;
+                Ok(Value::Null)
+            }
             "serial.close" => {
                 let handle = args.get("handle").and_then(Value::as_u64).ok_or("missing parameter 'handle'")? as u32;
                 let mut map = self.serial.lock().unwrap();
-                if map.get(&handle).is_some_and(|e| e.pane == pane) {
-                    if let Some(e) = map.remove(&handle) {
+                if map.get(&handle).is_some_and(|e| e.pane == pane)
+                    && let Some(e) = map.remove(&handle) {
                         e.stop.store(true, Ordering::Relaxed);
                     }
-                }
                 Ok(Value::Null)
             }
             _ => Err(format!("unknown command: {cmd}")),
@@ -311,14 +317,13 @@ fn exec(app: &AppDef, args: &Value) -> Res {
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
     let mut child = cmd.spawn().map_err(|e| format!("{program}: {e}"))?;
-    if let Some(mut stdin) = child.stdin.take() {
-        if let Some(input) = opt_s(args, "stdin") {
+    if let Some(mut stdin) = child.stdin.take()
+        && let Some(input) = opt_s(args, "stdin") {
             let input = input.as_bytes().to_vec();
             std::thread::spawn(move || {
                 let _ = stdin.write_all(&input);
             });
         }
-    }
     let read_all = |r: Option<Box<dyn Read + Send>>| {
         std::thread::spawn(move || {
             let mut v = Vec::new();
@@ -375,11 +380,10 @@ fn check_path(app: &AppDef, path: &str, may_not_exist: bool) -> Result<PathBuf, 
         return Ok(canon);
     }
     for root in &app.fs_roots {
-        if let Ok(r) = Path::new(root).canonicalize() {
-            if canon.starts_with(&r) {
+        if let Ok(r) = Path::new(root).canonicalize()
+            && canon.starts_with(&r) {
                 return Ok(canon);
             }
-        }
     }
     Err(format!("path outside allowed folders: {path} (see fs_roots)"))
 }
