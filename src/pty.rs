@@ -1,4 +1,4 @@
-//! Terminali (PowerShell, cmd, bash...) tramite pseudo-terminale (ConPTY su Windows).
+//! Terminals (PowerShell, cmd, bash...) via pseudo-terminal (ConPTY on Windows).
 
 use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
 use std::io::{Read, Write};

@@ -1,4 +1,4 @@
-//! Configurazione persistente: applicazioni, shell, bridge, sessione e memoria dimensioni.
+//! Persistent configuration: apps, shells, bridge, session and size memory.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -7,38 +7,38 @@ use std::path::{Path, PathBuf};
 
 use crate::layout::Layout;
 
-/// Un applicativo web registrato nel client.
+/// A web app registered in the client.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppDef {
     pub id: String,
     pub name: String,
     pub url: String,
-    /// Testo breve o emoji mostrato come icona.
+    /// Short text or emoji shown as the icon.
     #[serde(default)]
     pub icon: Option<String>,
-    /// Origini aggiuntive (oltre a quella di `url`) considerate "dell'applicazione":
-    /// navigazione consentita all'interno del pannello e accesso al bridge.
+    /// Extra origins (besides the one of `url`) treated as "belonging to the app":
+    /// navigation is allowed inside the pane and they get bridge access.
     #[serde(default)]
     pub allowed_origins: Vec<String>,
-    /// Se true (default) i link verso origini non consentite si aprono nel browser di sistema.
-    /// Se false ogni navigazione resta nel pannello (utile per SSO), ma il bridge resta
-    /// comunque limitato alle origini consentite.
+    /// If true (default), links to non-allowed origins open in the system browser.
+    /// If false, all navigation stays in the pane (useful for SSO), but the bridge is
+    /// still limited to the allowed origins.
     #[serde(default = "yes")]
     pub external_links_in_browser: bool,
-    /// Capacità concesse: "exec", "open", "fs", "clipboard", "serial", "messaging".
+    /// Granted capabilities: "exec", "open", "fs", "clipboard", "serial", "messaging".
     #[serde(default)]
     pub permissions: Vec<String>,
-    /// Programmi eseguibili con `shell.exec` (nome file, senza percorso). "*" = qualsiasi.
+    /// Programs runnable with `shell.exec` (file name, without path). "*" = any.
     #[serde(default)]
     pub exec_allow: Vec<String>,
-    /// Radici del filesystem accessibili con `fs.*`. "*" = qualsiasi percorso.
+    /// Filesystem roots accessible with `fs.*`. "*" = any path.
     #[serde(default)]
     pub fs_roots: Vec<String>,
     #[serde(default)]
     pub user_agent: Option<String>,
     #[serde(default)]
     pub zoom: Option<f64>,
-    /// File JS iniettato in ogni pagina dell'app (adattatore per app che non conoscono il bridge).
+    /// JS file injected into every page of the app (adapter for apps unaware of the bridge).
     #[serde(default)]
     pub inject_script: Option<String>,
 }
@@ -52,7 +52,7 @@ impl AppDef {
         self.permissions.iter().any(|p| p == perm || p == "*")
     }
 
-    /// Origini dell'applicazione (normalizzate).
+    /// The app's origins (normalized).
     pub fn origins(&self) -> Vec<String> {
         let mut v: Vec<String> = Vec::new();
         if let Some(o) = origin_of(&self.url) {
@@ -74,7 +74,7 @@ impl AppDef {
     }
 }
 
-/// Una shell/terminale avviabile in un pannello.
+/// A shell/terminal that can be started in a pane.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShellDef {
     pub id: String,
@@ -90,12 +90,12 @@ pub struct ShellDef {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BridgeConfig {
-    /// Server WebSocket locale per software esterni (solo 127.0.0.1).
+    /// Local WebSocket server for external software (127.0.0.1 only).
     #[serde(default = "yes")]
     pub enabled: bool,
     #[serde(default = "default_port")]
     pub port: u16,
-    /// Token richiesto ai client esterni (`ws://127.0.0.1:PORT/?token=...`). Generato se vuoto.
+    /// Token required from external clients (`ws://127.0.0.1:PORT/?token=...`). Generated if empty.
     #[serde(default)]
     pub token: String,
 }
@@ -118,7 +118,7 @@ pub struct Config {
     pub shells: Vec<ShellDef>,
     #[serde(default)]
     pub bridge: BridgeConfig,
-    /// Abilita gli strumenti sviluppatore (tasto nel pannello).
+    /// Enables developer tools (button in the pane).
     #[serde(default)]
     pub devtools: bool,
 }
@@ -178,22 +178,22 @@ fn default_shells() -> Vec<ShellDef> {
     if cfg!(windows) {
         vec![
             shell("powershell", "PowerShell", "powershell.exe", &["-NoLogo"]),
-            shell("cmd", "Prompt dei comandi", "cmd.exe", &[]),
+            shell("cmd", "Command Prompt", "cmd.exe", &[]),
         ]
     } else {
         let sh = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".into());
-        vec![shell("shell", "Terminale", &sh, &["-l"])]
+        vec![shell("shell", "Terminal", &sh, &["-l"])]
     }
 }
 
-/// Contenuto di un pannello (tile).
+/// Content of a pane (tile).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum PaneContent {
     Empty,
     App {
         app: String,
-        /// URL specifico all'interno dell'app (es. finestra aperta con window.open).
+        /// Specific URL within the app (e.g. a window opened with window.open).
         #[serde(default, skip_serializing_if = "Option::is_none")]
         url: Option<String>,
     },
@@ -202,7 +202,7 @@ pub enum PaneContent {
 }
 
 impl PaneContent {
-    /// Chiave stabile usata dalla memoria delle dimensioni.
+    /// Stable key used by the size memory.
     pub fn key(&self) -> String {
         match self {
             PaneContent::Empty => "-".into(),
@@ -230,7 +230,7 @@ pub struct Session {
     pub active: usize,
 }
 
-/// Memoria delle proporzioni: chiave = layout + contenuti, valore = ratios.
+/// Proportion memory: key = layout + contents, value = ratios.
 pub type SizeMemory = HashMap<String, Vec<f64>>;
 
 pub struct Paths {
@@ -282,18 +282,18 @@ pub fn save_json<T: Serialize>(path: &Path, value: &T) {
                 let _ = fs::rename(&tmp, path);
             }
         }
-        Err(e) => log::error!("serializzazione {}: {e}", path.display()),
+        Err(e) => log::error!("serializing {}: {e}", path.display()),
     }
 }
 
-/// Carica la configurazione; se manca la crea con valori di esempio.
-/// Restituisce anche un eventuale errore di parsing da mostrare all'utente.
+/// Loads the configuration; if missing, creates it with sample values.
+/// Also returns any parse error to show to the user.
 pub fn load_config(paths: &Paths) -> (Config, Option<String>) {
     let path = paths.config();
     let (mut cfg, err) = match fs::read_to_string(&path) {
         Ok(text) => match serde_json::from_str::<Config>(&text) {
             Ok(c) => (c, None),
-            Err(e) => (Config::default(), Some(format!("Errore in {}: {e}", path.display()))),
+            Err(e) => (Config::default(), Some(format!("Error in {}: {e}", path.display()))),
         },
         Err(_) => {
             let c = Config::default();
@@ -329,7 +329,7 @@ pub fn random_token() -> String {
     out
 }
 
-/// Origine normalizzata `scheme://host[:port]` (porta di default omessa).
+/// Normalized origin `scheme://host[:port]` (default port omitted).
 pub fn origin_of(url: &str) -> Option<String> {
     let url = url.trim();
     let (scheme, rest) = url.split_once("://")?;

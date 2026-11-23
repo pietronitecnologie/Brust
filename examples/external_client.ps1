@@ -1,5 +1,5 @@
-# Esempio: software locale che dialoga con gli applicativi aperti in Brust.
-# Uso: powershell -File cliente_esterno.ps1 -Token <token da Impostazioni>
+# Example: local software that talks to the apps open in Brust.
+# Usage: powershell -File external_client.ps1 -Token <token from Settings>
 param(
     [Parameter(Mandatory = $true)][string]$Token,
     [int]$Port = 47800
@@ -23,15 +23,15 @@ function Receive() {
     [Text.Encoding]::UTF8.GetString($buf, 0, $r.Count) | ConvertFrom-Json
 }
 
-Receive | Out-Host                                  # messaggio di benvenuto
+Receive | Out-Host                                  # welcome message
 
-# 1) Evento verso tutte le app (brust.on("ordine.nuovo", ...))
-Send @{ type = "emit"; target = "*"; event = "ordine.nuovo"; data = @{ numero = 123 } }
+# 1) Event to all apps (brust.on("order.created", ...))
+Send @{ type = "emit"; target = "*"; event = "order.created"; data = @{ number = 123 } }
 Receive | Out-Host
 
-# 2) Chiamata a un metodo registrato da Ordo con brust.handle("somma", ...)
-Send @{ type = "call"; id = 1; target = "ordo"; method = "somma"; params = @{ a = 20; b = 22 } }
+# 2) Call to a method registered by Ordo with brust.handle("sum", ...)
+Send @{ type = "call"; id = 1; target = "ordo"; method = "sum"; params = @{ a = 20; b = 22 } }
 do { $m = Receive } while ($m.type -ne "result" -or $m.id -ne 1)
-"Risultato: $($m.result)"
+"Result: $($m.result)"
 
-$ws.CloseAsync('NormalClosure', "fine", [Threading.CancellationToken]::None).Wait()
+$ws.CloseAsync('NormalClosure', "done", [Threading.CancellationToken]::None).Wait()

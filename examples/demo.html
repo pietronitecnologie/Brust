@@ -1,42 +1,42 @@
 <!doctype html>
-<html lang="it"><head><meta charset="utf-8"><title>Demo bridge</title>
+<html lang="en"><head><meta charset="utf-8"><title>Bridge demo</title>
 <style>body{font-family:system-ui,sans-serif;margin:16px;background:#f6f7f9;color:#222}button{margin:3px;padding:6px 10px}pre{background:#fff;border:1px solid #ddd;padding:8px;height:220px;overflow:auto;font-size:12px}</style>
 </head><body>
-<h3>Demo bridge Brust – <span id="who">?</span></h3>
+<h3>Brust bridge demo – <span id="who">?</span></h3>
 <div>
   <button id="info">system.info</button>
-  <button id="emit">emit → tutte le app</button>
-  <button id="call">call altra app: somma</button>
+  <button id="emit">emit → all apps</button>
+  <button id="call">call other app: sum</button>
   <button id="exec">shell.exec</button>
   <button id="clip">clipboard.read</button>
   <button id="serial">serial.list</button>
-  <button id="test">▶ Avvia test (software locale "tester")</button>
+  <button id="test">▶ Start test (local software "tester")</button>
 </div>
 <pre id="log"></pre>
 <script>
 const log = (...a) => { const el = document.getElementById('log'); el.textContent = a.map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' ') + '\n' + el.textContent; };
 window.addEventListener('brust:ready', () => {
   const p = window.brust;
-  document.getElementById('who').textContent = p.appId + ' (pannello ' + p.paneId + ')';
+  document.getElementById('who').textContent = p.appId + ' (pane ' + p.paneId + ')';
   const other = p.appId === 'ordo' ? 'metodo' : 'ordo';
-  p.on('*', (data, meta) => log('evento', meta.event, 'da', meta.source, data));
-  p.handle('somma', ({a, b}, ctx) => { log('chiamata somma da', ctx.from); return a + b; });
-  const run = (f) => f().then(r => log('ok', r)).catch(e => log('errore', e.message));
+  p.on('*', (data, meta) => log('event', meta.event, 'from', meta.source, data));
+  p.handle('sum', ({a, b}, ctx) => { log('sum called by', ctx.from); return a + b; });
+  const run = (f) => f().then(r => log('ok', r)).catch(e => log('error', e.message));
   info.onclick = () => run(() => p.info());
-  emit.onclick = () => { p.emit('saluto', {da: p.appId, ora: new Date().toISOString()}, '*'); log('emesso'); };
-  call.onclick = () => run(() => p.call(other, 'somma', {a: 2, b: 40}));
+  emit.onclick = () => { p.emit('greeting', {from: p.appId, time: new Date().toISOString()}, '*'); log('emitted'); };
+  call.onclick = () => run(() => p.call(other, 'sum', {a: 2, b: 40}));
   exec.onclick = () => run(() => p.exec(navigator.platform.startsWith('Win') ? 'cmd' : 'uname', navigator.platform.startsWith('Win') ? ['/c','ver'] : ['-a']));
   clip.onclick = () => run(() => p.invoke('clipboard.read'));
   serial.onclick = () => run(() => p.invoke('serial.list'));
-  // Flusso completo: app web → client → software locale → client → app web
-  p.on('test.progress', d => log('avanzamento', d.percent + '%', d.step));
+  // Full flow: web app → client → local software → client → web app
+  p.on('test.progress', d => log('progress', d.percent + '%', d.step));
   test.onclick = async () => {
-    log('richiesta test inviata…');
+    log('test request sent…');
     try {
-      const esito = await p.call('tester', 'startTest', { codice: 'PZ-001', ripetizioni: 3 }, { timeout_ms: 60000 });
-      log('ESITO', esito);
-    } catch (e) { log('test fallito:', e.message); }
+      const result = await p.call('tester', 'startTest', { code: 'PZ-001', repetitions: 3 }, { timeout_ms: 60000 });
+      log('RESULT', result);
+    } catch (e) { log('test failed:', e.message); }
   };
-  log('bridge pronto', p.version);
+  log('bridge ready', p.version);
 });
 </script></body></html>

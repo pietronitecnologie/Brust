@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="it">
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Terminale</title>
+<title>Terminal</title>
 <link rel="stylesheet" href="vendor/xterm.css">
 <style>
   html, body { margin: 0; height: 100%; background: #0f1115; overflow: hidden; }
@@ -42,7 +42,7 @@
   window.__pty_out = function (b64) { term.write(b64ToBytes(b64)); };
   window.__pty_exit = function () {
     exited = true;
-    term.write("\r\n\x1b[2m[processo terminato – premi Invio per riavviare]\x1b[0m\r\n");
+    term.write("\r\n\x1b[2m[process exited – press Enter to restart]\x1b[0m\r\n");
   };
 
   term.onData(function (d) {

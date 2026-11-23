@@ -1,5 +1,5 @@
-// Brust bridge – iniettato in ogni pagina degli applicativi.
-// API: window.brust (vedi README.md).
+// Brust bridge – injected into every app page.
+// API: window.brust (see README.md).
 (function () {
   if (window.brust) return;
   var CFG = __BRUST_CFG__;
@@ -57,7 +57,7 @@
         var done = function (ok, val) {
           post({ t: "call_result", id: m.id, ok: ok, result: ok ? val : undefined, error: ok ? undefined : String(val && val.message || val) });
         };
-        if (!h) { done(false, "metodo non gestito: " + m.method); return; }
+        if (!h) { done(false, "unhandled method: " + m.method); return; }
         Promise.resolve().then(function () { return h(m.params, { from: m.from }); })
           .then(function (r) { done(true, r === undefined ? null : r); }, function (e) { done(false, e); });
         break;
@@ -65,7 +65,7 @@
     }
   };
 
-  // Nessuna navigazione avanti/indietro: tasti Alt+frecce, tasti browser e pulsanti laterali del mouse.
+  // No back/forward navigation: Alt+arrow keys, browser keys and mouse side buttons.
   window.addEventListener("keydown", function (e) {
     var k = e.key;
     if ((e.altKey && (k === "ArrowLeft" || k === "ArrowRight")) || k === "BrowserBack" || k === "BrowserForward") {
@@ -88,23 +88,22 @@
     version: CFG.version,
     appId: CFG.appId,
     paneId: CFG.paneId,
-    /** Esegue un comando del client (capacità locali, UI, messaggistica). */
+    /** Runs a client command (local capabilities, UI, messaging). */
     invoke: invoke,
-    /** Ascolta eventi da altre app o da software esterni ("*" = tutti). */
+    /** Listens for events from other apps or external software ("*" = all). */
     on: on,
     off: off,
-    /** Invia un evento: target = id app, "*" (tutti) o null (solo software esterni). */
+    /** Sends an event: target = app id, "*" (all) or null (external software only). */
     emit: function (event, data, target) { post({ t: "emit", event: event, data: data === undefined ? null : data, target: target === undefined ? null : target }); },
-    /** Registra un metodo invocabile da altre app o software esterni. */
+    /** Registers a method callable by other apps or external software. */
     handle: function (method, fn) { handlers.set(method, fn); return function () { handlers.delete(method); }; },
-    /** Invoca un metodo registrato da un'altra app aperta. */
-    /** Invoca un metodo di un'altra app aperta o di un software locale collegato al bridge.
-        opts.timeout_ms: rifiuta la Promise se la risposta non arriva in tempo. */
+    /** Calls a method of another open app or of local software connected to the bridge.
+        opts.timeout_ms: rejects the Promise if no reply arrives in time. */
     call: function (target, method, params, opts) {
       var p = invoke("bridge.call", { target: target, method: method, params: params === undefined ? null : params });
       var ms = opts && opts.timeout_ms;
       if (!ms) return p;
-      return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error("timeout: nessuna risposta da " + target + " in " + ms + " ms")); }, ms); })]);
+      return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error("timeout: no reply from " + target + " in " + ms + " ms")); }, ms); })]);
     },
     exec: function (program, args, opts) { return invoke("shell.exec", Object.assign({ program: program, args: args || [] }, opts || {})); },
     open: function (target) { return invoke("shell.open", { target: target }); },

@@ -1,9 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-//! Brust – client desktop dedicato per applicativi web.
+//! Brust – dedicated desktop client for web apps.
 //!
-//! * schede (tab), ciascuna con un tileset di 1–4 pannelli ridimensionabili;
-//! * ogni pannello mostra un applicativo, un URL o un terminale (PowerShell, cmd, …);
-//! * bridge JS (`window.brust`) verso capacità locali e verso software esterni (WebSocket).
+//! * tabs, each with a tileset of 1–4 resizable panes;
+//! * each pane shows an app, a URL or a terminal (PowerShell, cmd, …);
+//! * JS bridge (`window.brust`) to local capabilities and to external software (WebSocket).
 
 mod assets;
 mod config;
@@ -51,7 +51,7 @@ pub enum UserEvent {
 
 /* ------------------------------------------------------------------ host */
 
-/// Finestra che ospita le webview figlie (su Linux tramite un gtk::Fixed).
+/// Window hosting the child webviews (on Linux via a gtk::Fixed).
 struct Host {
     window: Window,
     #[cfg(target_os = "linux")]
@@ -96,7 +96,7 @@ impl Host {
         }
     }
 
-    /// Dimensione logica dell'area client.
+    /// Logical size of the client area.
     fn size(&self) -> (f64, f64) {
         let s = self.window.inner_size().to_logical::<f64>(self.window.scale_factor());
         (s.width, s.height)
@@ -131,9 +131,9 @@ impl Pane {
 
 struct Tab {
     id: u32,
-    // `panes` può contenere più pannelli di quanti il layout ne mostri:
-    // quelli in eccesso restano "parcheggiati" (nascosti ma attivi) e
-    // riappaiono quando si torna a un layout con più tile.
+    // `panes` may hold more panes than the layout shows:
+    // the extra ones stay "parked" (hidden but alive) and
+    // reappear when switching back to a layout with more tiles.
     title: Option<String>,
     layout: Layout,
     ratios: Vec<f64>,
@@ -142,7 +142,7 @@ struct Tab {
 }
 
 impl Tab {
-    /// Pannelli mostrati dal layout corrente.
+    /// Panes shown by the current layout.
     fn visible(&self) -> &[Pane] {
         &self.panes[..self.layout.pane_count().min(self.panes.len())]
     }
@@ -174,7 +174,7 @@ struct App {
     overlay: bool,
     clients: HashMap<u32, WsClient>,
     calls: HashMap<u64, Caller>,
-    /// Chiamate in corso verso software esterni: id chiamata → client WebSocket che deve rispondere.
+    /// Pending calls to external software: call id → WebSocket client expected to reply.
     calls_to_ws: HashMap<u64, u32>,
     next_call: u64,
     bridge_status: String,
@@ -212,7 +212,7 @@ impl App {
             calls: HashMap::new(),
             calls_to_ws: HashMap::new(),
             next_call: 1,
-            bridge_status: "non avviato".into(),
+            bridge_status: "not started".into(),
         };
         app.start_bridge();
         app.build_shell();
@@ -223,12 +223,12 @@ impl App {
     fn start_bridge(&mut self) {
         let b = &self.config.bridge;
         if !b.enabled {
-            self.bridge_status = "disabilitato".into();
+            self.bridge_status = "disabled".into();
             return;
         }
         self.bridge_status = match ws::start(b.port, b.token.clone(), self.proxy.clone()) {
-            Ok(()) => format!("in ascolto su 127.0.0.1:{}", b.port),
-            Err(e) => format!("errore: {e}"),
+            Ok(()) => format!("listening on 127.0.0.1:{}", b.port),
+            Err(e) => format!("error: {e}"),
         };
         log::info!("bridge: {}", self.bridge_status);
     }
@@ -254,11 +254,11 @@ impl App {
             });
         match self.host.build(builder) {
             Ok(v) => self.shell = Some(v),
-            Err(e) => panic!("impossibile creare l'interfaccia: {e}"),
+            Err(e) => panic!("cannot create the UI: {e}"),
         }
     }
 
-    /* ------------------------------------------------------------ sessione */
+    /* ------------------------------------------------------------- session */
 
     fn restore_session(&mut self) {
         let session: Session = config::load_json(&self.paths.session()).unwrap_or_default();
@@ -299,7 +299,7 @@ impl App {
         config::save_json(&self.paths.session(), &s);
     }
 
-    /* ---------------------------------------------------- memoria tile */
+    /* ---------------------------------------------------- tile memory */
 
     fn size_keys(t: &Tab) -> (String, String) {
         let all: Vec<String> = t.visible().iter().map(|p| p.content.key()).collect();
@@ -309,7 +309,7 @@ impl App {
         )
     }
 
-    /// Applica le proporzioni ricordate per questa combinazione di layout e applicazioni.
+    /// Applies the remembered proportions for this combination of layout and apps.
     fn recall_sizes(&mut self, ti: usize, reset_if_unknown: bool) {
         let (k1, k2) = Self::size_keys(&self.tabs[ti]);
         let t = &mut self.tabs[ti];
@@ -337,7 +337,7 @@ impl App {
         self.config.apps.iter().find(|a| a.id == id)
     }
 
-    /// Definizione "effettiva" per un pannello: app configurata, o app anonima per URL liberi.
+    /// "Effective" definition for a pane: the configured app, or an anonymous app for free URLs.
     fn effective_app(&self, content: &PaneContent) -> Option<AppDef> {
         match content {
             PaneContent::App { app, .. } => self.app_def(app).cloned(),
@@ -374,8 +374,8 @@ impl App {
             PaneContent::Terminal { .. } => {
                 #[allow(unused_mut)]
                 let mut b = WebViewBuilder::new_with_web_context(&mut self.ctx);
-                // Su Linux il protocollo è registrato una sola volta nel WebContext condiviso
-                // (dall'interfaccia), su Windows/macOS va registrato per ogni webview.
+                // On Linux the protocol is registered only once in the shared WebContext
+                // (by the UI); on Windows/macOS it must be registered for each webview.
                 if !cfg!(target_os = "linux") {
                     b = b.with_custom_protocol(assets::SCHEME.into(), assets::handle);
                 }
@@ -389,7 +389,7 @@ impl App {
             }
             PaneContent::App { .. } | PaneContent::Url { .. } => {
                 let Some(app) = self.effective_app(&content) else {
-                    self.tabs[ti].panes[pi].doc_title = "applicativo non trovato nella configurazione".into();
+                    self.tabs[ti].panes[pi].doc_title = "app not found in the configuration".into();
                     return;
                 };
                 let start_url = match &content {
@@ -453,8 +453,8 @@ impl App {
         match result {
             Ok(v) => self.tabs[ti].panes[pi].view = Some(v),
             Err(e) => {
-                log::error!("creazione webview: {e}");
-                self.tabs[ti].panes[pi].doc_title = format!("errore: {e}");
+                log::error!("webview creation: {e}");
+                self.tabs[ti].panes[pi].doc_title = format!("error: {e}");
             }
         }
     }
@@ -482,7 +482,7 @@ impl App {
         t.layout.compute(self.stage(), &t.ratios, GAP)
     }
 
-    /// Posiziona e mostra/nasconde le webview della scheda attiva.
+    /// Positions and shows/hides the webviews of the active tab.
     fn relayout(&mut self) {
         let (w, h) = self.host.size();
         if let Some(s) = &self.shell {
@@ -499,8 +499,8 @@ impl App {
             if let Some(v) = &p.view {
                 let vr = R::new(r.x + 1.0, r.y + BAR_H + HEADER_H, r.w - 2.0, r.h - HEADER_H - 1.0);
                 let visible = !self.overlay && !p.picking && vr.w > 4.0 && vr.h > 4.0;
-                // Prima si rende visibile, poi si posiziona: GTK, quando rimostra un widget,
-                // ne ricalcola l'allocazione e annullerebbe le dimensioni appena impostate.
+                // Show first, then position: when GTK re-shows a widget it recomputes
+                // its allocation and would undo the size just set.
                 let _ = v.set_visible(visible);
                 self.host.place(v, vr);
             }
@@ -575,7 +575,7 @@ impl App {
             self.push_tab(PaneContent::Empty);
         }
         let next = if self.active > index || self.active >= self.tabs.len() { self.active.saturating_sub(1) } else { self.active };
-        self.active = usize::MAX; // forza attivazione
+        self.active = usize::MAX; // force activation
         self.activate(next.min(self.tabs.len() - 1));
     }
 
@@ -583,8 +583,8 @@ impl App {
         let ti = self.active;
         let n = layout.pane_count();
         if self.tabs[ti].panes.len() > n {
-            // Restringendo il layout restano visibili prima i pannelli con contenuto;
-            // gli altri vengono parcheggiati (non chiusi). I vuoti in eccesso si eliminano.
+            // When shrinking the layout, panes with content stay visible first;
+            // the others are parked (not closed). Extra empty panes are removed.
             let focused_id = self.tabs[ti].panes.get(self.tabs[ti].focused).map(|p| p.id);
             let panes = std::mem::take(&mut self.tabs[ti].panes);
             let (mut full, empty): (Vec<Pane>, Vec<Pane>) = panes.into_iter().partition(|p| p.content != PaneContent::Empty);
@@ -636,11 +636,11 @@ impl App {
         }
     }
 
-    /* ---------------------------------------------------------- stato UI */
+    /* ---------------------------------------------------------- UI state */
 
     fn content_label(&self, c: &PaneContent) -> (String, String, Option<String>) {
         match c {
-            PaneContent::Empty => ("empty".into(), "Scegli contenuto".into(), None),
+            PaneContent::Empty => ("empty".into(), "Choose content".into(), None),
             PaneContent::App { app, .. } => match self.app_def(app) {
                 Some(a) => ("app".into(), a.name.clone(), a.icon.clone()),
                 None => ("app".into(), app.clone(), None),
@@ -679,7 +679,7 @@ impl App {
             };
             names.push(p.custom_title.clone().unwrap_or(name));
         }
-        if names.is_empty() { ("Nuova scheda".into(), None) } else { (names.join(" · "), icon) }
+        if names.is_empty() { ("New tab".into(), None) } else { (names.join(" · "), icon) }
     }
 
     fn push_state(&self) {
@@ -694,7 +694,7 @@ impl App {
             .map(|(i, (p, r))| {
                 let (kind, name, icon) = self.content_label(&p.content);
                 let title = p.custom_title.clone().unwrap_or(name);
-                let subtitle = if p.pty_exited { "terminato".to_string() } else { p.doc_title.clone() };
+                let subtitle = if p.pty_exited { "exited".to_string() } else { p.doc_title.clone() };
                 json!({
                     "id": p.id, "index": i, "kind": kind, "title": title, "subtitle": subtitle,
                     "icon": icon, "rect": r, "focused": i == t.focused, "picking": p.picking,
@@ -855,7 +855,7 @@ impl App {
                 if let Some((ti, pi)) = pane.and_then(|p| self.find_pane(p)) {
                     let p = &self.tabs[ti].panes[pi];
                     if matches!(p.content, PaneContent::Terminal { .. }) {
-                        // Riavvia il terminale.
+                        // Restart the terminal.
                         self.tabs[ti].panes[pi].pty = None;
                         self.tabs[ti].panes[pi].pty_exited = false;
                         if let Some(v) = &self.tabs[ti].panes[pi].view {
@@ -894,14 +894,14 @@ impl App {
                 let _ = open::that_detached(&self.paths.config_dir);
             }
             "reload_config" => self.reload_config(),
-            _ => log::debug!("comando shell sconosciuto: {cmd}"),
+            _ => log::debug!("unknown shell command: {cmd}"),
         }
     }
 
     fn close_pane(&mut self, pane: u32) {
         let Some((ti, pi)) = self.find_pane(pane) else { return };
         if self.tabs[ti].panes[pi].content == PaneContent::Empty {
-            // Pannello già vuoto: riduce il tileset.
+            // Pane already empty: shrink the tileset.
             let n = self.tabs[ti].panes.len();
             let smaller = match self.tabs[ti].layout.pane_count() {
                 4 => Layout::MainLeft,
@@ -963,12 +963,12 @@ impl App {
         if let Some(e) = err {
             self.toast(&e);
         } else if port_changed {
-            self.toast("Le modifiche al bridge WebSocket saranno attive al prossimo avvio.");
+            self.toast("WebSocket bridge changes will take effect on next launch.");
         }
         self.push_state();
     }
 
-    /* ---------------------------------------------------------- IPC pannelli */
+    /* ------------------------------------------------------------ pane IPC */
 
     fn send_to_pane(&self, pane: u32, msg: &Value) -> bool {
         match self.find_pane(pane).and_then(|(ti, pi)| self.tabs[ti].panes[pi].view.as_ref()) {
@@ -991,7 +991,7 @@ impl App {
             .collect()
     }
 
-    /// Pannello che risponde alle chiamate per un'app (preferendo la scheda attiva).
+    /// Pane that answers calls for an app (preferring the active tab).
     fn call_target(&self, target: &str) -> Option<u32> {
         let panes = self.app_panes(target);
         let in_active: Vec<u32> = self.tabs.get(self.active).map(|t| t.panes.iter().map(|p| p.id).collect()).unwrap_or_default();
@@ -1022,7 +1022,7 @@ impl App {
         }
     }
 
-    /// Client WebSocket con il nome dato (es. `?name=tester`); accetta anche `external:nome`.
+    /// WebSocket client with the given name (e.g. `?name=tester`); also accepts `external:name`.
     fn ws_client_named(&self, target: &str) -> Option<u32> {
         let name = target.strip_prefix("external:").unwrap_or(target);
         let mut ids: Vec<u32> = self.clients.iter().filter(|(_, c)| c.name == name).map(|(id, _)| *id).collect();
@@ -1030,12 +1030,12 @@ impl App {
         ids.last().copied()
     }
 
-    /// Avvia una chiamata verso un'app aperta o, se non esiste, verso un software esterno con quel nome.
+    /// Starts a call to an open app or, if none exists, to external software with that name.
     fn start_call(&mut self, caller: Caller, target: &str, method: &str, params: &Value, from: &str) -> Result<(), String> {
         let pane = if target.starts_with("external:") { None } else { self.call_target(target) };
         let client = if pane.is_none() { self.ws_client_named(target) } else { None };
         if pane.is_none() && client.is_none() {
-            return Err(format!("'{target}' non disponibile: nessuna app aperta né software collegato con questo nome"));
+            return Err(format!("'{target}' unavailable: no open app or connected software with this name"));
         }
         let id = self.next_call;
         self.next_call += 1;
@@ -1099,11 +1099,11 @@ impl App {
         let Some(app) = self.effective_app(&content) else { return };
         let app_id = app.id.clone();
         let source = if app_id.is_empty() { format!("pane:{pane}") } else { app_id.clone() };
-        // Il bridge risponde solo alle origini dell'applicativo.
+        // The bridge only answers the app's own origins.
         if !app.owns_url(url) {
             if t == "invoke" {
                 let id = m["id"].as_u64().unwrap_or(0);
-                self.send_to_pane(pane, &ok_reply(id, Err(format!("origine non autorizzata per il bridge: {}", config::origin_of(url).unwrap_or_default()))));
+                self.send_to_pane(pane, &ok_reply(id, Err(format!("origin not authorized for the bridge: {}", config::origin_of(url).unwrap_or_default()))));
             }
             return;
         }
@@ -1116,7 +1116,7 @@ impl App {
             }
             "emit" => {
                 if !app.has("messaging") {
-                    log::warn!("{source}: emit senza permesso 'messaging'");
+                    log::warn!("{source}: emit without 'messaging' permission");
                     return;
                 }
                 let event = m["event"].as_str().unwrap_or("").to_string();
@@ -1128,7 +1128,7 @@ impl App {
                 let res = if m["ok"].as_bool().unwrap_or(false) {
                     Ok(m["result"].clone())
                 } else {
-                    Err(m["error"].as_str().unwrap_or("errore").to_string())
+                    Err(m["error"].as_str().unwrap_or("error").to_string())
                 };
                 self.finish_call(id, res);
             }
@@ -1145,13 +1145,13 @@ impl App {
             "ui.open" => {
                 let content = if let Some(a) = args["app"].as_str() {
                     if self.app_def(a).is_none() {
-                        return reply(self, Err(format!("applicativo sconosciuto: {a}")));
+                        return reply(self, Err(format!("unknown app: {a}")));
                     }
                     PaneContent::App { app: a.to_string(), url: args["url"].as_str().map(str::to_string) }
                 } else if let Some(u) = args["url"].as_str() {
                     PaneContent::Url { url: u.to_string() }
                 } else {
-                    return reply(self, Err("specificare 'app' o 'url'".into()));
+                    return reply(self, Err("specify 'app' or 'url'".into()));
                 };
                 self.open_tab(content);
                 reply(self, Ok(Value::Null));
@@ -1178,7 +1178,7 @@ impl App {
             }
             "bridge.call" => {
                 if !app.has("messaging") {
-                    return reply(self, Err("permesso 'messaging' non concesso".into()));
+                    return reply(self, Err("'messaging' permission not granted".into()));
                 }
                 let target = args["target"].as_str().unwrap_or("").to_string();
                 let method = args["method"].as_str().unwrap_or("").to_string();
@@ -1189,7 +1189,7 @@ impl App {
             }
             "bridge.clients" => {
                 if !app.has("messaging") {
-                    return reply(self, Err("permesso 'messaging' non concesso".into()));
+                    return reply(self, Err("'messaging' permission not granted".into()));
                 }
                 let list: Vec<Value> = self.clients.iter().map(|(id, c)| json!({"id": id, "name": c.name})).collect();
                 reply(self, Ok(Value::Array(list)));
@@ -1209,9 +1209,9 @@ impl App {
                 reply(self, Ok(json!({"configured": self.config.apps.iter().map(|a| &a.id).collect::<Vec<_>>(), "open": open})));
             }
             _ => match locals::permission_for(cmd) {
-                None => reply(self, Err(format!("comando sconosciuto: {cmd}"))),
+                None => reply(self, Err(format!("unknown command: {cmd}"))),
                 Some(perm) if !perm.is_empty() && !app.has(perm) => {
-                    reply(self, Err(format!("permesso '{perm}' non concesso all'applicativo")));
+                    reply(self, Err(format!("'{perm}' permission not granted to the app")));
                 }
                 Some(_) => {
                     let locals = self.locals.clone();
@@ -1243,7 +1243,7 @@ impl App {
                     return;
                 }
                 let Some(shell) = self.config.shells.iter().find(|s| s.id == shell_id).cloned() else {
-                    let msg = format!("\r\nshell '{shell_id}' non configurata\r\n");
+                    let msg = format!("\r\nshell '{shell_id}' not configured\r\n");
                     if let Some(v) = &self.tabs[ti].panes[pi].view {
                         let _ = v.evaluate_script(&format!("__pty_out({})", json!(B64.encode(msg))));
                     }
@@ -1256,7 +1256,7 @@ impl App {
                         p.pty_exited = false;
                     }
                     Err(e) => {
-                        let msg = format!("\r\nimpossibile avviare {}: {e}\r\n", shell.program);
+                        let msg = format!("\r\ncannot start {}: {e}\r\n", shell.program);
                         if let Some(v) = &self.tabs[ti].panes[pi].view {
                             let _ = v.evaluate_script(&format!("__pty_out({}); __pty_exit()", json!(B64.encode(msg))));
                         }
@@ -1284,7 +1284,7 @@ impl App {
             "paste" => {
                 let text = arboard::Clipboard::new().ok().and_then(|mut c| c.get_text().ok()).unwrap_or_default();
                 if let Some(pty) = &mut self.tabs[ti].panes[pi].pty {
-                    // Bracketed paste non garantito su tutte le shell: si invia il testo normalizzato.
+                    // Bracketed paste is not guaranteed on every shell: send the normalized text.
                     let text = if cfg!(windows) { text.replace("\r\n", "\r") } else { text.replace("\r\n", "\n") };
                     pty.write(text.as_bytes());
                 }
@@ -1312,10 +1312,10 @@ impl App {
                     self.deliver_event(Some("*"), "bridge.client_disconnected", &json!({"id": client, "name": c.name}), "brust", None);
                 }
                 self.calls.retain(|_, c| !matches!(c, Caller::Ws { client: cl, .. } if *cl == client));
-                // Le chiamate in attesa di risposta da questo software falliscono subito.
+                // Calls awaiting a reply from this software fail immediately.
                 let orphaned: Vec<u64> = self.calls_to_ws.iter().filter(|(_, c)| **c == client).map(|(id, _)| *id).collect();
                 for id in orphaned {
-                    self.finish_call(id, Err("il software esterno si è disconnesso prima di rispondere".into()));
+                    self.finish_call(id, Err("the external software disconnected before replying".into()));
                 }
                 self.push_state();
             }
@@ -1326,7 +1326,7 @@ impl App {
                     }
                 };
                 let Ok(m) = serde_json::from_str::<Value>(&text) else {
-                    return reply(self, json!({"type": "error", "error": "JSON non valido"}));
+                    return reply(self, json!({"type": "error", "error": "invalid JSON"}));
                 };
                 let id = m["id"].clone();
                 let name = self.clients.get(&client).map(|c| c.name.clone()).unwrap_or_default();
@@ -1364,13 +1364,13 @@ impl App {
                     "open" => {
                         let content = if let Some(a) = m["app"].as_str() {
                             if self.app_def(a).is_none() {
-                                return reply(self, err(format!("applicativo sconosciuto: {a}")));
+                                return reply(self, err(format!("unknown app: {a}")));
                             }
                             PaneContent::App { app: a.to_string(), url: m["url"].as_str().map(str::to_string) }
                         } else if let Some(u) = m["url"].as_str() {
                             PaneContent::Url { url: u.to_string() }
                         } else {
-                            return reply(self, err("specificare 'app' o 'url'".into()));
+                            return reply(self, err("specify 'app' or 'url'".into()));
                         };
                         self.open_tab(content);
                         let _ = self.host.window.set_focus();
@@ -1385,17 +1385,17 @@ impl App {
                                 let _ = self.host.window.set_focus();
                                 reply(self, ok(Value::Null));
                             }
-                            None => reply(self, err(format!("applicativo '{target}' non aperto"))),
+                            None => reply(self, err(format!("app '{target}' is not open"))),
                         }
                     }
                     "reply" => {
-                        // Risposta a una chiamata ricevuta da un'app ({"type":"call",...}).
+                        // Reply to a call received from an app ({"type":"call",...}).
                         let call_id = m["id"].as_u64().unwrap_or(0);
                         if self.calls_to_ws.get(&call_id) == Some(&client) {
                             let res = if m["ok"].as_bool().unwrap_or(true) {
                                 Ok(m["result"].clone())
                             } else {
-                                Err(m["error"].as_str().unwrap_or("errore").to_string())
+                                Err(m["error"].as_str().unwrap_or("error").to_string())
                             };
                             self.finish_call(call_id, res);
                         }
@@ -1404,13 +1404,13 @@ impl App {
                         self.reload_tab();
                         reply(self, ok(Value::Null));
                     }
-                    other => reply(self, err(format!("tipo di messaggio sconosciuto: {other}"))),
+                    other => reply(self, err(format!("unknown message type: {other}"))),
                 }
             }
         }
     }
 
-    /* ---------------------------------------------------------- eventi */
+    /* ---------------------------------------------------------- events */
 
     fn handle(&mut self, ev: UserEvent) {
         match ev {
@@ -1455,7 +1455,7 @@ impl App {
                 }
             }
             UserEvent::Loaded { pane, url } => {
-                log::debug!("pannello {pane} caricato: {url}");
+                log::debug!("pane {pane} loaded: {url}");
             }
             UserEvent::NewWindow { pane, url } => {
                 let Some((ti, pi)) = self.find_pane(pane) else { return };
@@ -1480,7 +1480,7 @@ fn main() {
 
     #[cfg(target_os = "linux")]
     {
-        // WebKitGTK: il renderer DMABUF su alcune VM/driver produce pannelli neri.
+        // WebKitGTK: the DMABUF renderer produces black panes on some VMs/drivers.
         if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
             unsafe { std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1") };
         }
@@ -1493,7 +1493,7 @@ fn main() {
         .with_inner_size(LogicalSize::new(1400.0, 900.0))
         .with_min_inner_size(LogicalSize::new(640.0, 420.0))
         .build(&event_loop)
-        .expect("creazione finestra");
+        .expect("window creation");
     let host = Host::new(window);
     let mut app = App::new(host, proxy);
 

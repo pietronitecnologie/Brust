@@ -1,5 +1,5 @@
-//! Server WebSocket locale (127.0.0.1) che permette a software esterni di
-//! dialogare con gli applicativi aperti nel client.
+//! Local WebSocket server (127.0.0.1) that lets external software
+//! talk to the apps open in the client.
 
 use std::net::{TcpListener, TcpStream};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
@@ -17,7 +17,7 @@ pub enum WsEvent {
 }
 
 pub fn start(port: u16, token: String, proxy: EventLoopProxy<UserEvent>) -> Result<(), String> {
-    let listener = TcpListener::bind(("127.0.0.1", port)).map_err(|e| format!("porta {port}: {e}"))?;
+    let listener = TcpListener::bind(("127.0.0.1", port)).map_err(|e| format!("port {port}: {e}"))?;
     std::thread::spawn(move || {
         let mut next_id = 1u32;
         for stream in listener.incoming().flatten() {
@@ -49,7 +49,7 @@ fn handle(stream: TcpStream, client: u32, token: String, proxy: EventLoopProxy<U
             .map(str::to_string);
         let given = query_param(query, "token").or(header_token).unwrap_or_default();
         if given != token {
-            let mut r = ErrorResponse::new(Some("token non valido".into()));
+            let mut r = ErrorResponse::new(Some("invalid token".into()));
             *r.status_mut() = tungstenite::http::StatusCode::UNAUTHORIZED;
             return Err(r);
         }
@@ -61,7 +61,7 @@ fn handle(stream: TcpStream, client: u32, token: String, proxy: EventLoopProxy<U
     let mut ws = match tungstenite::accept_hdr(stream, callback) {
         Ok(ws) => ws,
         Err(e) => {
-            log::warn!("handshake WS rifiutato: {e}");
+            log::warn!("WS handshake rejected: {e}");
             return;
         }
     };

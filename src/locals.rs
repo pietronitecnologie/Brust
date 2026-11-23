@@ -1,6 +1,6 @@
-//! Capacità locali esposte agli applicativi web tramite il bridge:
-//! esecuzione processi, filesystem, appunti, porte seriali, apertura file/URL.
-//! Ogni comando viene eseguito su un thread separato per non bloccare l'interfaccia.
+//! Local capabilities exposed to web apps through the bridge:
+//! process execution, filesystem, clipboard, serial ports, opening files/URLs.
+//! Each command runs on a separate thread so the UI is not blocked.
 
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as B64;
@@ -17,7 +17,7 @@ use tao::event_loop::EventLoopProxy;
 use crate::config::AppDef;
 use crate::UserEvent;
 
-/// Permesso richiesto da ciascun comando locale (None = comando non locale).
+/// Permission required by each local command (None = not a local command).
 pub fn permission_for(cmd: &str) -> Option<&'static str> {
     Some(match cmd {
         "system.info" => "",
@@ -45,7 +45,7 @@ pub struct Locals {
 type Res = Result<Value, String>;
 
 fn s<'a>(args: &'a Value, key: &str) -> Result<&'a str, String> {
-    args.get(key).and_then(Value::as_str).ok_or_else(|| format!("parametro '{key}' mancante"))
+    args.get(key).and_then(Value::as_str).ok_or_else(|| format!("missing parameter '{key}'"))
 }
 
 fn opt_s<'a>(args: &'a Value, key: &str) -> Option<&'a str> {
@@ -65,7 +65,7 @@ impl Locals {
         Arc::new(Locals { serial: Mutex::new(HashMap::new()), next: AtomicU32::new(1), proxy })
     }
 
-    /// Esegue un comando locale; da chiamare su un thread di lavoro.
+    /// Runs a local command; to be called on a worker thread.
     pub fn execute(&self, app: &AppDef, pane: u32, cmd: &str, args: &Value) -> Res {
         match cmd {
             "system.info" => Ok(system_info()),
@@ -166,15 +166,15 @@ impl Locals {
             }
             "serial.open" => self.serial_open(pane, args),
             "serial.write" => {
-                let handle = args.get("handle").and_then(Value::as_u64).ok_or("parametro 'handle' mancante")? as u32;
+                let handle = args.get("handle").and_then(Value::as_u64).ok_or("missing parameter 'handle'")? as u32;
                 let data = decode(args)?;
                 let mut map = self.serial.lock().unwrap();
-                let e = map.get_mut(&handle).filter(|e| e.pane == pane).ok_or("porta non aperta")?;
+                let e = map.get_mut(&handle).filter(|e| e.pane == pane).ok_or("port not open")?;
                 e.port.write_all(&data).map_err(|e| e.to_string())?;
                 Ok(json!(data.len()))
             }
             "serial.close" => {
-                let handle = args.get("handle").and_then(Value::as_u64).ok_or("parametro 'handle' mancante")? as u32;
+                let handle = args.get("handle").and_then(Value::as_u64).ok_or("missing parameter 'handle'")? as u32;
                 let mut map = self.serial.lock().unwrap();
                 if map.get(&handle).is_some_and(|e| e.pane == pane) {
                     if let Some(e) = map.remove(&handle) {
@@ -183,7 +183,7 @@ impl Locals {
                 }
                 Ok(Value::Null)
             }
-            _ => Err(format!("comando sconosciuto: {cmd}")),
+            _ => Err(format!("unknown command: {cmd}")),
         }
     }
 
@@ -238,7 +238,7 @@ impl Locals {
         Ok(json!({ "handle": handle }))
     }
 
-    /// Chiude le risorse (porte seriali) aperte da un pannello.
+    /// Releases the resources (serial ports) opened by a pane.
     pub fn release_pane(&self, pane: u32) {
         self.serial.lock().unwrap().retain(|_, e| {
             if e.pane == pane {
@@ -269,7 +269,7 @@ pub fn system_info() -> Value {
 }
 
 fn program_allowed(app: &AppDef, program: &str) -> bool {
-    // Nome file senza estensione, riconoscendo sia `/` sia `\` come separatori.
+    // File name without extension, treating both `/` and `\` as separators.
     let stem = |p: &str| {
         let name = p.rsplit(['/', '\\']).next().unwrap_or(p).to_ascii_lowercase();
         match name.rsplit_once('.') {
@@ -284,7 +284,7 @@ fn program_allowed(app: &AppDef, program: &str) -> bool {
 fn exec(app: &AppDef, args: &Value) -> Res {
     let program = s(args, "program")?;
     if !program_allowed(app, program) {
-        return Err(format!("programma non consentito: {program} (vedi exec_allow)"));
+        return Err(format!("program not allowed: {program} (see exec_allow)"));
     }
     let argv: Vec<String> = args
         .get("args")
@@ -354,12 +354,12 @@ fn exec(app: &AppDef, args: &Value) -> Res {
     }))
 }
 
-/// Verifica che il percorso ricada in una delle radici consentite all'app.
-/// `may_not_exist`: per scritture/creazioni si canonicalizza la cartella padre.
+/// Checks that the path falls within one of the app's allowed roots.
+/// `may_not_exist`: for writes/creation the parent folder is canonicalized.
 fn check_path(app: &AppDef, path: &str, may_not_exist: bool) -> Result<PathBuf, String> {
     let p = PathBuf::from(path);
     if !p.is_absolute() {
-        return Err("il percorso deve essere assoluto".into());
+        return Err("path must be absolute".into());
     }
     let canon = match p.canonicalize() {
         Ok(c) => c,
@@ -381,7 +381,7 @@ fn check_path(app: &AppDef, path: &str, may_not_exist: bool) -> Result<PathBuf, 
             }
         }
     }
-    Err(format!("percorso fuori dalle cartelle consentite: {path} (vedi fs_roots)"))
+    Err(format!("path outside allowed folders: {path} (see fs_roots)"))
 }
 
 #[cfg(test)]

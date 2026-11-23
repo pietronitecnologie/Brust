@@ -2,7 +2,7 @@
 name = "brust"
 version = "0.1.0"
 edition = "2024"
-description = "Client desktop dedicato per applicativi web, con bridge verso hardware/software locale, tab e tile."
+description = "Dedicated desktop client for web apps, with a bridge to local hardware/software, tabs and tiles."
 
 [dependencies]
 arboard = "3.7.0"

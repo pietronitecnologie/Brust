@@ -1,4 +1,4 @@
-//! Risorse interne servite tramite il protocollo personalizzato `brust://`.
+//! Internal resources served via the custom `brust://` protocol.
 
 use std::borrow::Cow;
 use wry::http::{header::CONTENT_TYPE, Request, Response};
@@ -17,7 +17,7 @@ fn lookup(path: &str) -> Option<(&'static [u8], &'static str)> {
     })
 }
 
-/// URL di una risorsa interna (su Windows WebView2 usa `http://brust.localhost/`).
+/// URL of an internal resource (on Windows WebView2 uses `http://brust.localhost/`).
 pub fn url(path: &str) -> String {
     if cfg!(windows) {
         format!("http://{SCHEME}.localhost/{path}")

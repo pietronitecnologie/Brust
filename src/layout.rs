@@ -1,28 +1,28 @@
-//! Calcolo geometrico dei tile.
+//! Tile geometry calculation.
 
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum Layout {
-    /// Un solo pannello.
+    /// A single pane.
     #[serde(rename = "1")]
     Single,
-    /// Due pannelli affiancati.
+    /// Two panes side by side.
     #[serde(rename = "2h")]
     SplitH,
-    /// Due pannelli sovrapposti.
+    /// Two panes stacked.
     #[serde(rename = "2v")]
     SplitV,
-    /// Tre colonne.
+    /// Three columns.
     #[serde(rename = "3c")]
     Cols3,
-    /// Uno grande a sinistra, due impilati a destra.
+    /// One large on the left, two stacked on the right.
     #[serde(rename = "3l")]
     MainLeft,
-    /// Uno grande in alto, due affiancati sotto.
+    /// One large on top, two side by side below.
     #[serde(rename = "3t")]
     MainTop,
-    /// Griglia 2x2.
+    /// 2x2 grid.
     #[serde(rename = "4")]
     Grid,
 }
@@ -51,8 +51,8 @@ impl R {
     }
 }
 
-/// Separatore trascinabile. Il nuovo valore è `(pos - min) / (max - min)`,
-/// dove `pos` è la coordinata del puntatore lungo `axis`.
+/// Draggable splitter. The new value is `(pos - min) / (max - min)`,
+/// where `pos` is the pointer coordinate along `axis`.
 #[derive(Debug, Clone, Serialize)]
 pub struct Splitter {
     pub index: usize,
@@ -100,7 +100,7 @@ impl Layout {
         }
     }
 
-    /// Normalizza un vettore di ratios (lunghezza e limiti).
+    /// Normalizes a ratios vector (length and bounds).
     pub fn sanitize(self, ratios: &[f64]) -> Vec<f64> {
         let def = self.default_ratios();
         let mut v: Vec<f64> = def
@@ -118,7 +118,7 @@ impl Layout {
         v
     }
 
-    /// Calcola i rettangoli dei pannelli e dei separatori nell'area data.
+    /// Computes the pane and splitter rectangles within the given area.
     pub fn compute(self, a: R, ratios: &[f64], gap: f64) -> (Vec<R>, Vec<Splitter>) {
         let r = self.sanitize(ratios);
         let g = gap / 2.0;
