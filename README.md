@@ -1,6 +1,17 @@
 <p align="center"><img src="assets/icon/brust-256.png" width="128" alt="Brust icon"></p>
 
-# Brust
+<h1 align="center">Brust</h1>
+
+<p align="center">
+  <a href="GUIDE.md"><b>📘 Integration guide</b></a> ·
+  <a href="LICENSE"><b>⚖️ License (GPL-3.0)</b></a> ·
+  <a href="sdk/README.md"><b>🧩 SDKs</b></a> ·
+  <a href="examples/"><b>🧪 Examples</b></a>
+</p>
+
+> **Building a web app or a local program that talks to Brust?** Start with the
+> [Integration guide](GUIDE.md): how to structure web apps and local software, the message
+> reference, fleet deployment and a checklist.
 
 A Rust desktop client for any web application (ERP, CRM, MES, dashboards, intranet tools, …). It is a "closed" browser,
 with no Back/Forward, that acts as a **bridge** between the web applications, the local PC (processes,
