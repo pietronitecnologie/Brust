@@ -3,6 +3,7 @@ name = "brust"
 version = "0.1.0"
 edition = "2024"
 license = "GPL-3.0-or-later"
+repository = "https://github.com/pietronitecnologie/Brust"
 description = "Dedicated desktop client for web apps, with a bridge to local hardware/software, tabs and tiles."
 
 [dependencies]
