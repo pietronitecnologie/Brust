@@ -158,7 +158,27 @@ export async function startTest(code, onProgress) {
 | Print a label, a report or the current page | `print.page`, `print.file` (`print` permission) |
 | Show that something needs attention | `ui.badge` + `ui.notify` with `native: true` |
 
-### 3.4 Notes, badges, notifications and printing
+### 3.4 Your own items in the right-click menu
+
+Brust shows its own right-click menu in app panes (copy table/row/column, notes, search…).
+An app can add items that fit its domain; `when` decides where they appear:
+
+```js
+const remove = brust.menu.add({
+  label: "Open order",
+  icon: "📦",
+  when: (ctx) => ctx.cell && /^PZ-\d+$/.test(ctx.cell.text),   // or "always" | "selection" | "link" | "image" | "table" | "editable"
+  run: (ctx) => openOrder(ctx.cell.text),
+});
+// ctx = { selection, link, image, cell: { text, row, column } | null, table: { rows: string[][] } | null, target }
+remove();   // take the item away again
+```
+
+If the app already has its own right-click menu (its `contextmenu` handler calls
+`preventDefault()`), Brust leaves it alone. The whole menu can be turned off per app
+(Settings → Apps → *Brust right-click menu*, or `"context_menu": false`).
+
+### 3.5 Notes, badges, notifications and printing
 
 ```js
 // Append to a notebook (Markdown, "notes" permission). The default notebook is "Inbox".
@@ -190,7 +210,7 @@ await brust.invoke("print.file", { path: "C:\\Exchange\\CRM\\label.pdf", printer
 * With the JS SDK (`sdk/js/brust.js`) the same calls are `notes.append(text, notebook)`,
   `ui.badge(count)`, `ui.notify(message, title)`, `print.printers()`, `print.page(opts)`.
 
-### 3.5 Profiles, logins and private pages
+### 3.6 Profiles, logins and private pages
 
 * Each app has its **own browser profile** by default (`isolated: true`): cookies and storage are
   not shared between apps. With a common SSO the user logs in once per app; if the apps must share

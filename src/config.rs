@@ -65,6 +65,10 @@ pub struct AppDef {
     /// denied unless allowed here.
     #[serde(default)]
     pub web_permissions: HashMap<String, String>,
+    /// Brust's right-click menu (copy table/row/column, notes, search…) instead of the browser's.
+    /// Default true. Shift+right-click always shows the browser menu.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_menu: Option<bool>,
 }
 
 
@@ -104,7 +108,7 @@ impl AppDef {
 }
 
 /// A shell/terminal that can be started in a pane.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ShellDef {
     pub id: String,
     pub name: String,
@@ -521,6 +525,37 @@ pub fn validate_app(a: &mut AppDef, existing: &[AppDef], original: Option<&str>)
     Ok(())
 }
 
+/// Checks and normalizes a shell edited in the UI. `original` is the id before editing.
+pub fn validate_shell(sh: &mut ShellDef, existing: &[ShellDef], original: Option<&str>) -> Result<(), String> {
+    sh.name = sh.name.trim().to_string();
+    if sh.name.is_empty() {
+        return Err("The name is required".into());
+    }
+    sh.id = if sh.id.trim().is_empty() { slug(&sh.name) } else { slug(&sh.id) };
+    if sh.id.is_empty() {
+        return Err("The ID must contain letters or digits".into());
+    }
+    if existing.iter().any(|x| x.id == sh.id && Some(x.id.as_str()) != original) {
+        return Err(format!("Another shell already uses the ID \"{}\"", sh.id));
+    }
+    sh.program = sh.program.trim().to_string();
+    if sh.program.is_empty() {
+        return Err("The program is required (e.g. powershell.exe, pwsh.exe, cmd.exe, wsl.exe, bash)".into());
+    }
+    sh.args.retain(|a| !a.trim().is_empty());
+    sh.cwd = sh.cwd.take().map(|c| c.trim().to_string()).filter(|c| !c.is_empty());
+    if let Some(c) = &sh.cwd {
+        if !Path::new(c).is_dir() {
+            return Err(format!("Start folder not found: {c}"));
+        }
+    }
+    sh.env.retain(|k, _| !k.trim().is_empty());
+    if let Some(bad) = sh.env.keys().find(|k| k.contains('=') || k.contains(char::is_whitespace)) {
+        return Err(format!("Invalid variable name: {bad}"));
+    }
+    Ok(())
+}
+
 /// Removes empty and default-valued fields so config.json stays readable.
 fn tidy_app(a: &AppDef) -> serde_json::Value {
     let mut v = serde_json::to_value(a).unwrap_or_default();
@@ -621,6 +656,18 @@ mod tests {
         assert!(validate_app(&mut bad, &existing, None).is_err());
         let t = tidy_app(&a);
         assert!(t.get("fs_roots").is_none() && t.get("clear_on_exit").is_none() && t["external_links_in_browser"] == false);
+    }
+
+    #[test]
+    fn shell_validation() {
+        let existing = vec![ShellDef { id: "pwsh".into(), name: "PowerShell 7".into(), program: "pwsh.exe".into(), ..Default::default() }];
+        let mut s = ShellDef { name: "Git Bash".into(), program: " bash.exe ".into(), args: vec!["--login".into(), " ".into()], ..Default::default() };
+        validate_shell(&mut s, &existing, None).unwrap();
+        assert_eq!((s.id.as_str(), s.program.as_str(), s.args.len()), ("git-bash", "bash.exe", 1));
+        let mut dup = ShellDef { id: "pwsh".into(), name: "x".into(), program: "x".into(), ..Default::default() };
+        assert!(validate_shell(&mut dup, &existing, None).is_err());
+        let mut nocwd = ShellDef { name: "y".into(), program: "y".into(), cwd: Some("/definitely/not/here".into()), ..Default::default() };
+        assert!(validate_shell(&mut nocwd, &existing, None).is_err());
     }
 
     #[test]

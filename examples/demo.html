@@ -17,6 +17,20 @@
   <button id="printers">print.list</button>
 </div>
 <pre id="log"></pre>
+<h4>Right-click a table cell: Copy table / row / column</h4>
+<table id="orders" border="1" cellpadding="4" style="border-collapse:collapse;background:#fff;font-size:13px">
+  <thead><tr><th>Order</th><th>Customer</th><th colspan="2">Quantity / Price</th></tr></thead>
+  <tbody>
+    <tr><td>PZ-001</td><td rowspan="2">Rossi S.p.A.</td><td>10</td><td>12,50 €</td></tr>
+    <tr><td>PZ-002</td><td>4</td><td>99,00 €</td></tr>
+    <tr><td>PZ-003</td><td>Bianchi s.r.l.</td><td>1</td><td>1.250,00 €</td></tr>
+  </tbody>
+</table>
+<div role="grid" style="display:grid;grid-template-columns:repeat(3,auto);gap:2px;margin-top:10px;font-size:13px;max-width:360px">
+  <div role="row" style="display:contents"><div role="columnheader"><b>Machine</b></div><div role="columnheader"><b>State</b></div><div role="columnheader"><b>OEE</b></div></div>
+  <div role="row" style="display:contents"><div role="gridcell">Press 1</div><div role="gridcell">Running</div><div role="gridcell">87%</div></div>
+  <div role="row" style="display:contents"><div role="gridcell">Lathe 2</div><div role="gridcell">Stopped</div><div role="gridcell">42%</div></div>
+</div>
 <script>
 const log = (...a) => { const el = document.getElementById('log'); el.textContent = a.map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' ') + '\n' + el.textContent; };
 window.addEventListener('brust:ready', () => {

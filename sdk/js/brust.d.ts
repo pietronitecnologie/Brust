@@ -54,6 +54,17 @@ export interface BrustBridge {
   off(event: string, fn: EventListener): void;
   emit(event: string, data?: unknown, target?: string | null): void;
   handle<P = any, R = any>(method: string, fn: MethodHandler<P, R>): Unsubscribe;
+  /** Brust's right-click menu. */
+  menu: {
+    /** Adds an item; returns a function that removes it. */
+    add(item: {
+      label: string;
+      icon?: string;
+      when?: "always" | "selection" | "link" | "image" | "table" | "editable" | ((ctx: MenuContext) => boolean);
+      run: (ctx: MenuContext) => void;
+    }): Unsubscribe;
+    clear(): void;
+  };
   call<T = any>(target: string, method: string, params?: unknown, opts?: { timeout_ms?: number }): Promise<T>;
   exec(program: string, args?: string[], opts?: ExecOptions): Promise<ExecResult>;
   open(target: string): Promise<null>;
@@ -126,3 +137,13 @@ declare const brust: {
   print: typeof print;
 };
 export default brust;
+
+/** Where the user right-clicked. */
+export interface MenuContext {
+  selection: string;
+  link: string | null;
+  image: string | null;
+  cell: { text: string; row: number; column: number } | null;
+  table: { rows: string[][] } | null;
+  target: Element | null;
+}

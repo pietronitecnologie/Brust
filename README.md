@@ -33,7 +33,9 @@ files, clipboard, serial ports, printers) and other installed software.
   command palette (Ctrl+K), command line and `brust://` links, native notifications and badges,
   panes detached into their own window.
 * **Industrial**: printing, kiosk mode, signed central configuration, signed self-update.
-* **Configured from inside Brust**: apps, privacy and appearance are edited in ⚙ Settings, no
+* **Right-click menu**: copy a **table, row, column or cell** (pastes into Excel/Word with rows and
+  columns intact), tables as CSV or Markdown, save to notes, search, open links in the browser.
+* **Configured from inside Brust**: apps, shells, privacy and appearance are edited in ⚙ Settings, no
   file editing needed. **Light and dark theme** (or follow the system).
 * **SDKs** for web apps (JS) and local software (Python, Node.js, C#) in [`sdk/`](sdk/README.md).
 
@@ -61,6 +63,9 @@ Everything day-to-day is configured **inside Brust**, in ⚙ Settings:
   The form covers name, address, icon, ID, extra addresses of the app, external links,
   permissions, programs and folders allowed, privacy options, browser permissions and the
   advanced options below. Open panes of an edited app are reopened with the new settings.
+* **Shells**: *＋ Add shell* (presets for PowerShell, PowerShell 7, Command Prompt, WSL, Git Bash,
+  SSH, Bash), *Edit*, *Delete*: program, arguments, start folder, environment variables.
+  Running terminals keep their process; changes apply to new or restarted terminals.
 * **Privacy**: tracker blocking, extra blocked / allowed domains, block list files, confirmation
   of sensitive commands, activity log, auto-lock, PIN, remembered permissions.
 
@@ -133,6 +138,7 @@ The file is created on first launch:
 | `exec_allow` | Programs that can be started with `shell.exec` (matched on the file name). `"*"` = all. |
 | `fs_roots` | Folders accessible through `fs.*` and `print.file`. `"*"` = the whole disk. |
 | `inject_script` | JS injected into every page: an adapter for apps that don't know about Brust. |
+| `context_menu` | `false` turns off Brust's right-click menu for the app (default: on). |
 | `isolated` | Default `true`: the app has its own browser profile (cookies, storage), separate from the other apps. `false`: it shares one profile with the other non-isolated apps. |
 | `incognito` | `true`: nothing (cookies, storage) is stored on disk; the app starts logged out every time. |
 | `clear_on_exit` | `true`: the app's stored browser data is deleted when Brust exits (and at the next start, in case of a crash). Only for isolated apps. |
@@ -310,6 +316,27 @@ Python, Node.js and C# are in [`sdk/`](sdk/README.md).
 * Each capability must be granted explicitly per app. `exec_allow` and `fs_roots` restrict
   access further.
 * The WebSocket listens only on 127.0.0.1 and requires the token.
+
+## Right-click menu
+
+In app panes the browser menu is replaced by Brust's own menu, which adapts to what is under the
+pointer:
+
+| Where | Items |
+|---|---|
+| Table cell (`<table>` or ARIA `role="grid"/"table"`) | **Copy table**, **Copy row**, **Copy column**, Copy cell, Copy table as CSV, Copy table as Markdown, Save table to notes |
+| Selected text | Copy, Search the web (private page), Save to notes |
+| Text field | Cut, Copy, Paste, Select all |
+| Link / image | Open in the system browser, copy the address |
+| Always | Reload, Print…, Open in a separate window, Inspect (with `devtools`) |
+
+Table copies put both **HTML** and **tab-separated text** on the clipboard, so a paste into Excel,
+Word or an e-mail keeps rows and columns. Merged cells (`colspan`/`rowspan`) are handled: *Copy
+table* keeps them merged, while row, column, CSV and Markdown copies repeat the merged value in
+every cell it covers. The menu is not shown when the app has its own right-click menu, and
+**Shift+right-click** always opens the browser menu. *Paste* from the menu needs the app's
+`clipboard` permission (Ctrl+V always works). Apps can add their own items with `brust.menu.add`
+(see the [Integration guide](GUIDE.md)).
 
 ## Notes
 

@@ -709,7 +709,14 @@ impl App {
                 PaneContent::App { url: Some(u), .. } => u.clone(),
                 _ => app.url.clone(),
             };
-            let cfg = json!({"paneId": pane_id, "appId": app.id, "version": env!("CARGO_PKG_VERSION")});
+            let cfg = json!({
+                "paneId": pane_id, "appId": app.id, "version": env!("CARGO_PKG_VERSION"),
+                "menu": app.context_menu.unwrap_or(true),
+                "canPaste": app.has("clipboard"),
+                "devtools": devtools,
+                "notes": true,
+                "theme": self.effective_theme(),
+            });
             let mut script = assets::BRIDGE_JS.replace("__BRUST_CFG__", &cfg.to_string());
             if let Some(path) = &app.inject_script {
                 match std::fs::read_to_string(path) {
@@ -1104,6 +1111,8 @@ impl App {
             "apps": self.config.apps.iter().map(|a| json!({"id": a.id, "name": a.name, "icon": a.icon, "url": a.url, "permissions": a.permissions,
                 "isolated": a.is_isolated(), "incognito": a.incognito, "clearOnExit": a.clear_on_exit})).collect::<Vec<_>>(),
             "shells": self.config.shells.iter().map(|s| json!({"id": s.id, "name": s.name, "program": s.program})).collect::<Vec<_>>(),
+            "shellDefs": self.config.shells,
+            "shellsManaged": self.remote.as_ref().is_some_and(|r| r.get("shells").is_some()),
             "appDefs": self.config.apps,
             "theme": self.config.theme,
             "effectiveTheme": self.effective_theme(),
@@ -1185,7 +1194,7 @@ impl App {
                 "new_tab" | "close_tab" | "move_tab" | "rename_tab" | "set_layout" | "close_pane" | "swap_panes" | "pick"
                     | "set_content" | "detach" | "open_config" | "open_config_dir" | "reload_config" | "save_template"
                     | "delete_template" | "devtools" | "set_pin" | "clear_pin" | "revoke_grant" | "install_update"
-                    | "app_save" | "app_delete" | "privacy_save" | "set_theme"
+                    | "app_save" | "app_delete" | "privacy_save" | "set_theme" | "shell_save" | "shell_delete"
             )
         {
             return;
@@ -1363,6 +1372,18 @@ impl App {
                 Ok(p) => self.save_privacy(p),
                 Err(e) => self.shell_call("privacyError", &json!(format!("Invalid data: {e}"))),
             },
+            "shell_save" => {
+                let original = m["original"].as_str().map(str::to_string);
+                match serde_json::from_value::<config::ShellDef>(m["shell"].clone()) {
+                    Ok(sh) => self.save_shell(sh, original.as_deref()),
+                    Err(e) => self.shell_call("appError", &json!(format!("Invalid data: {e}"))),
+                }
+            }
+            "shell_delete" => {
+                if let Some(id) = m["id"].as_str().map(str::to_string) {
+                    self.delete_shell(&id);
+                }
+            }
             "app_delete" => {
                 if let Some(id) = m["id"].as_str().map(str::to_string) {
                     self.delete_app(&id);
@@ -1831,12 +1852,60 @@ impl App {
                 w.set_theme(frame);
             }
             for p in &t.panes {
-                if let (PaneContent::Terminal { .. } | PaneContent::Notes { .. }, Some(v)) = (&p.content, &p.view) {
+                if let Some(v) = &p.view {
                     let _ = v.evaluate_script(&format!("window.__brust_theme && __brust_theme('{theme}')"));
                 }
             }
         }
         self.push_state();
+    }
+
+    /// Adds or updates a shell from Settings → Shells. Running terminals keep their process;
+    /// the new settings apply to terminals opened or restarted afterwards.
+    fn save_shell(&mut self, mut sh: config::ShellDef, original: Option<&str>) {
+        if self.remote.as_ref().is_some_and(|r| r.get("shells").is_some()) {
+            return self.shell_call("appError", &json!("The shells are managed by the central configuration"));
+        }
+        let mut shells = self.config.shells.clone();
+        if let Err(e) = config::validate_shell(&mut sh, &shells, original) {
+            return self.shell_call("appError", &json!(e));
+        }
+        match original.and_then(|o| shells.iter().position(|x| x.id == o)) {
+            Some(i) => shells[i] = sh.clone(),
+            None => shells.push(sh.clone()),
+        }
+        if let Err(e) = config::save_config_key(&self.paths, "shells", serde_json::to_value(&shells).unwrap_or_default()) {
+            return self.shell_call("appError", &json!(e));
+        }
+        if let Some(old) = original.filter(|o| *o != sh.id) {
+            for p in self.tabs.iter_mut().flat_map(|t| t.panes.iter_mut()) {
+                if let PaneContent::Terminal { shell } = &mut p.content {
+                    if shell == old {
+                        *shell = sh.id.clone();
+                    }
+                }
+            }
+            self.save_session();
+        }
+        self.reload_config();
+        self.shell_call("appSaved", &json!(sh.id));
+        self.toast(&format!("\"{}\" saved — applies to new or restarted terminals", sh.name));
+    }
+
+    fn delete_shell(&mut self, id: &str) {
+        if self.remote.as_ref().is_some_and(|r| r.get("shells").is_some()) {
+            return self.shell_call("appError", &json!("The shells are managed by the central configuration"));
+        }
+        if self.config.shells.len() <= 1 {
+            return self.shell_call("appError", &json!("Keep at least one shell"));
+        }
+        let mut shells = self.config.shells.clone();
+        shells.retain(|x| x.id != id);
+        if let Err(e) = config::save_config_key(&self.paths, "shells", serde_json::to_value(&shells).unwrap_or_default()) {
+            return self.shell_call("appError", &json!(e));
+        }
+        self.reload_config();
+        self.shell_call("appSaved", &Value::Null);
     }
 
     fn delete_app(&mut self, id: &str) {
@@ -2028,6 +2097,47 @@ impl App {
             "shortcut" => {
                 if m["name"] == "focus_pane" || ti == self.active || self.tabs[ti].is_floating() {
                     self.shortcut(&m);
+                }
+                return;
+            }
+            "menu" => {
+                // Actions of the right-click menu that need the client.
+                match m["action"].as_str().unwrap_or("") {
+                    "open_external" => {
+                        let link = m["url"].as_str().unwrap_or("");
+                        if link.starts_with("http://") || link.starts_with("https://") || link.starts_with("mailto:") {
+                            let _ = open::that_detached(link);
+                        }
+                    }
+                    "search" => {
+                        let q: String = m["q"].as_str().unwrap_or("").chars().take(300).collect();
+                        if !q.trim().is_empty() {
+                            let enc: String = q
+                                .bytes()
+                                .map(|b| if b.is_ascii_alphanumeric() { (b as char).to_string() } else { format!("%{b:02X}") })
+                                .collect();
+                            self.open_tab(PaneContent::Url { url: format!("https://duckduckgo.com/?q={enc}"), private: true });
+                        }
+                    }
+                    "devtools" => {
+                        if self.config.devtools && !self.kiosk() {
+                            if let Some(v) = &self.tabs[ti].panes[pi].view {
+                                v.open_devtools();
+                            }
+                        }
+                    }
+                    "copy" => {
+                        // Fallback when the page could not write the clipboard itself (write only).
+                        let text = m["text"].as_str().unwrap_or("").to_string();
+                        if let Ok(mut cb) = arboard::Clipboard::new() {
+                            let _ = match m["html"].as_str().filter(|h| !h.is_empty()) {
+                                Some(html) => cb.set_html(html.to_string(), Some(text)),
+                                None => cb.set_text(text),
+                            };
+                        }
+                    }
+                    "detach" => self.pending_detach.push(pane),
+                    _ => {}
                 }
                 return;
             }

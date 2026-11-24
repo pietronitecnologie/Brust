@@ -447,7 +447,7 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
 
   /* ---------- Settings ---------- */
   function openSettings() { if (S.kiosk) return; closePalette(true); send("overlay", { on: true }); $("overlay").classList.add("show"); renderSettings(true); $("dlg").scrollTop = 0; }
-  function closeSettings() { appEdit = null; $("overlay").classList.remove("show"); send("overlay", { on: false }); }
+  function closeSettings() { appEdit = null; shellEdit = null; $("overlay").classList.remove("show"); send("overlay", { on: false }); }
   var auditShown = false;
   function sec(title) { return "<h4>" + esc(title) + "</h4>"; }
   var settingsSig = "";
@@ -455,7 +455,8 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
     if (!$("overlay").classList.contains("show")) { settingsSig = ""; return; }
     // Rebuild only when something shown here changed (keeps typing and messages intact).
     if (appEdit) { if (force) renderAppEditor(); return; }
-    var sig = JSON.stringify([S.version, S.configError, S.configPath, S.apps, S.privacy, S.privacyConfig, S.privacyManaged, S.theme, S.appsManaged, S.pinSet, S.templates, S.notesDir, S.bridge, S.remote, S.update,
+    if (shellEdit) { if (force) renderShellEditor(); return; }
+    var sig = JSON.stringify([S.version, S.configError, S.configPath, S.apps, S.shellDefs, S.shellsManaged, S.privacy, S.privacyConfig, S.privacyManaged, S.theme, S.appsManaged, S.pinSet, S.templates, S.notesDir, S.bridge, S.remote, S.update,
       S.tabs.filter(function (t) { return t.floating; }).map(function (t) { return t.title; }), auditShown]);
     if (sig === settingsSig && !force) return;
     settingsSig = sig;
@@ -481,6 +482,13 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
         "<br><span class='muted'>permissions: " + esc(a.permissions.join(", ") || "none") + " · " + esc(flags.join(", ")) + "</span></td>" +
         (S.appsManaged ? "" : "<td style='text-align:right;white-space:nowrap'><button class='btn ghost mini' data-appedit='" + esc(a.id) + "'>Edit</button></td>") + "</tr>";
     }).join("") : "<tr><td class='muted'>No apps yet.</td></tr>") + "</table>";
+
+    h += sec("Shells (terminals)") + (S.shellsManaged ? "<div class='muted'>Managed by the central configuration.</div>" : "<div class='row' style='margin-top:0'><button class='btn mini' id='shadd'>＋ Add shell</button></div>") +
+      "<table>" + S.shellDefs.map(function (x) {
+        return "<tr><td>›_ <b>" + esc(x.name) + "</b> <code>" + esc(x.id) + "</code></td><td><code>" + esc([x.program].concat(x.args || []).join(" ")) + "</code>" +
+          (x.cwd ? "<br><span class='muted'>in " + esc(x.cwd) + "</span>" : "") + "</td>" +
+          (S.shellsManaged ? "" : "<td style='text-align:right;white-space:nowrap'><button class='btn ghost mini' data-shedit='" + esc(x.id) + "'>Edit</button></td>") + "</tr>";
+      }).join("") + "</table>";
 
     h += sec("Privacy");
     var pc = S.privacyConfig;
@@ -545,6 +553,8 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
     if (auditShown && lastAudit) showAudit(lastAudit);
     $("dlg").querySelectorAll("[data-theme]").forEach(function (x) { x.onclick = function () { send("set_theme", { theme: x.dataset.theme }); }; });
     var aa = $("appadd"); if (aa) aa.onclick = function () { openAppEditor(null); };
+    var sa = $("shadd"); if (sa) sa.onclick = function () { openShellEditor(null); };
+    $("dlg").querySelectorAll("[data-shedit]").forEach(function (x) { x.onclick = function () { openShellEditor(x.dataset.shedit); }; });
     $("dlg").querySelectorAll("[data-appedit]").forEach(function (x) { x.onclick = function () { openAppEditor(x.dataset.appedit); }; });
     var pvs = $("pvsave"); if (pvs) pvs.onclick = function () {
       var lines = function (id) { return $(id).value.split(/\r?\n/).map(function (x) { return x.trim(); }).filter(Boolean); };
@@ -590,6 +600,7 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
       "<span class='hint'>Used by other apps and local software to address this app (bridge, command line, links).</span>" +
       "<label class='l' for='ae-origins'>Also part of the app</label>" + ta("ae-origins", d.allowed_origins, "other addresses of the app, one per line (e.g. the login page https://login.example.com)") +
       "<span></span><label class='checks'><label><input type='checkbox' id='ae-ext'" + (d.external_links_in_browser !== false ? " checked" : "") + "><span>Open links to other sites in the system browser</span></label></label>" +
+      "<span></span><label class='checks'><label><input type='checkbox' id='ae-menu'" + (d.context_menu !== false ? " checked" : "") + "><span>Brust right-click menu<small>Copy table / row / column, notes, search… (Shift+right-click: browser menu)</small></span></label></label>" +
       "</div>";
     h += sec("Permissions") + "<div class='checks'>" + S.permissionNames.map(function (p) {
       return "<label><input type='checkbox' data-perm='" + p + "'" + (d.permissions.indexOf(p) >= 0 ? " checked" : "") + "><span><b>" + p + "</b><small>" + esc(PERM_INFO[p] || "") + "</small></span></label>"; }).join("") + "</div>";
@@ -634,13 +645,64 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
     var zoom = parseFloat($("ae-zoom").value);
     return {
       id: $("ae-id").value.trim(), name: $("ae-name").value.trim(), url: $("ae-url").value.trim(), icon: $("ae-icon").value.trim() || null,
-      allowed_origins: lines("ae-origins"), external_links_in_browser: $("ae-ext").checked,
+      allowed_origins: lines("ae-origins"), external_links_in_browser: $("ae-ext").checked, context_menu: $("ae-menu").checked ? null : false,
       permissions: Array.prototype.filter.call($("dlg").querySelectorAll("[data-perm]"), function (c) { return c.checked; }).map(function (c) { return c.dataset.perm; }),
       exec_allow: lines("ae-exec"), fs_roots: lines("ae-fs"),
       isolated: $("ae-isolated").checked, incognito: $("ae-incognito").checked, clear_on_exit: $("ae-clear").checked,
       block_trackers: t("ae-block"), confirm: t("ae-confirm"), web_permissions: wp,
       zoom: isFinite(zoom) && zoom > 0 ? zoom : null, user_agent: $("ae-ua").value.trim() || null, inject_script: $("ae-inject").value.trim() || null
     };
+  }
+
+  /* ---------- Shell editor ---------- */
+  var shellEdit = null;
+  function openShellEditor(id) {
+    var src = id ? S.shellDefs.filter(function (x) { return x.id === id; })[0] : null;
+    var d = src ? JSON.parse(JSON.stringify(src)) : { id: "", name: "", program: "", args: [], cwd: null, env: {} };
+    shellEdit = { original: src ? src.id : null, draft: d, confirmDelete: false };
+    if (!$("overlay").classList.contains("show")) { closePalette(true); send("overlay", { on: true }); $("overlay").classList.add("show"); }
+    renderShellEditor();
+  }
+  var SHELL_PRESETS = [
+    ["PowerShell", "powershell.exe", "-NoLogo"], ["PowerShell 7", "pwsh.exe", "-NoLogo"], ["Command Prompt", "cmd.exe", ""],
+    ["WSL", "wsl.exe", ""], ["Git Bash", "C:\\Program Files\\Git\\bin\\bash.exe", "--login\n-i"], ["SSH", "ssh.exe", "user@server"], ["Bash", "/bin/bash", "-l"]
+  ];
+  function renderShellEditor() {
+    var d = shellEdit.draft, isNew = !shellEdit.original;
+    var env = Object.keys(d.env || {}).map(function (k) { return k + "=" + d.env[k]; }).join("\n");
+    var h = "<h2>" + (isNew ? "Add shell" : "Edit " + esc(d.name)) + "</h2>";
+    if (isNew) h += "<div class='row' style='margin-top:6px'><span class='muted' style='align-self:center'>Presets:</span>" + SHELL_PRESETS.map(function (p, i) {
+      return "<button class='btn ghost mini' data-preset='" + i + "'>" + esc(p[0]) + "</button>"; }).join("") + "</div>";
+    h += "<div class='form' style='margin-top:14px'>" +
+      "<label class='l' for='se-name'>Name</label><input class='f' id='se-name' value='" + esc(d.name) + "' placeholder='e.g. PowerShell 7'>" +
+      "<label class='l' for='se-prog'>Program</label><input class='f' id='se-prog' value='" + esc(d.program) + "' placeholder='e.g. pwsh.exe, cmd.exe, wsl.exe, C:\\Program Files\\Git\\bin\\bash.exe' spellcheck='false'>" +
+      "<label class='l' for='se-args'>Arguments</label><textarea id='se-args' placeholder='one per line, e.g. -NoLogo'>" + esc((d.args || []).join("\n")) + "</textarea>" +
+      "<label class='l' for='se-cwd'>Start folder</label><input class='f' id='se-cwd' value='" + esc(d.cwd || "") + "' placeholder='default: your home folder' spellcheck='false'>" +
+      "<label class='l' for='se-env'>Environment variables</label><textarea id='se-env' placeholder='NAME=value, one per line'>" + esc(env) + "</textarea>" +
+      "<label class='l' for='se-id'>ID</label><input class='f' id='se-id' value='" + esc(d.id) + "' placeholder='automatic from the name' spellcheck='false'>" +
+      "<span class='hint'>Terminals already open keep running; changes apply to new or restarted terminals (⟳ in the pane header).</span>" +
+      "</div>";
+    h += "<div class='formerr' id='apperr'></div><div class='row' style='justify-content:space-between'>" +
+      (isNew ? "<span></span>" : "<button class='btn danger' id='sedel'>" + (shellEdit.confirmDelete ? "Click again to delete" : "Delete shell") + "</button>") +
+      "<span style='display:flex;gap:8px'><button class='btn ghost' id='secancel'>Cancel</button><button class='btn' id='sesave'>" + (isNew ? "Add shell" : "Save") + "</button></span></div>";
+    $("dlg").innerHTML = h;
+    $("dlg").scrollTop = 0;
+    setTimeout(function () { $("se-name").focus(); }, 20);
+    $("dlg").querySelectorAll("[data-preset]").forEach(function (b) {
+      b.onclick = function () { var p = SHELL_PRESETS[+b.dataset.preset]; $("se-name").value = p[0]; $("se-prog").value = p[1]; $("se-args").value = p[2]; };
+    });
+    $("secancel").onclick = function () { shellEdit = null; renderSettings(true); };
+    var del = $("sedel"); if (del) del.onclick = function () {
+      if (!shellEdit.confirmDelete) { shellEdit.draft = collectShell(); shellEdit.confirmDelete = true; renderShellEditor(); return; }
+      send("shell_delete", { id: shellEdit.original });
+    };
+    $("sesave").onclick = function () { $("apperr").textContent = ""; send("shell_save", { original: shellEdit.original, shell: collectShell() }); };
+  }
+  function collectShell() {
+    var lines = function (id) { return $(id).value.split(/\r?\n/).map(function (x) { return x.trim(); }).filter(Boolean); };
+    var env = {};
+    lines("se-env").forEach(function (l) { var i = l.indexOf("="); if (i > 0) env[l.slice(0, i).trim()] = l.slice(i + 1); else env[l] = ""; });
+    return { id: $("se-id").value.trim(), name: $("se-name").value.trim(), program: $("se-prog").value.trim(), args: lines("se-args"), cwd: $("se-cwd").value.trim() || null, env: env };
   }
 
   var lastAudit = null;
@@ -775,7 +837,7 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
     }
     if (e.target.tagName === "INPUT" && e.key !== "F5") return;
     if (S && (S.locked || S.confirm)) return;
-    if (e.key === "Escape" && $("overlay").classList.contains("show")) { if (appEdit) { appEdit = null; renderSettings(true); } else closeSettings(); return; }
+    if (e.key === "Escape" && $("overlay").classList.contains("show")) { if (appEdit || shellEdit) { appEdit = null; shellEdit = null; renderSettings(true); } else closeSettings(); return; }
     if (e.ctrlKey && !e.shiftKey && (e.key === "k" || e.key === "K")) { e.preventDefault(); openPalette(); return; }
     if (e.ctrlKey && e.shiftKey && (e.key === "L" || e.key === "l")) { e.preventDefault(); send("lock"); return; }
     if (e.key === "F5" || (e.ctrlKey && (e.key === "r" || e.key === "R"))) { e.preventDefault(); send("reload_tab"); }
@@ -811,7 +873,7 @@ body.dragging-y, body.dragging-y * { cursor: row-resize !important; }
     },
     auditLog: function (entries) { showAudit(entries); },
     appError: function (msg) { var e = $("apperr"); if (e) e.textContent = msg; else brustShell.toast(msg); },
-    appSaved: function () { if (appEdit) { appEdit = null; renderSettings(true); } },
+    appSaved: function () { if (appEdit || shellEdit) { appEdit = null; shellEdit = null; renderSettings(true); } },
     privacyError: function (msg) { var e = $("pverr"); if (e) e.textContent = msg; else brustShell.toast(msg); },
     privacySaved: function () { brustShell.toast("Privacy settings saved"); },
     toast: function (msg) {
